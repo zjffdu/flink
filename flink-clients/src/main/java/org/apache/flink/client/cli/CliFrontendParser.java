@@ -183,6 +183,7 @@ public class CliFrontendParser {
 		Options options = buildGeneralOptions(new Options());
 		options = getProgramSpecificOptions(options);
 		options.addOption(SAVEPOINT_PATH_OPTION);
+		options.addOption(ADDRESS_OPTION);
 		return options.addOption(SAVEPOINT_ALLOW_NON_RESTORED_OPTION);
 	}
 
