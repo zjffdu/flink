@@ -23,6 +23,8 @@ import java.io.{BufferedReader, File, FileOutputStream}
 import org.apache.flink.api.java.{JarHelper, ScalaShellRemoteEnvironment, ScalaShellRemoteStreamEnvironment}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.table.api.TableEnvironment
+import org.apache.flink.table.api.scala.{BatchTableEnvironment, StreamTableEnvironment}
 import org.apache.flink.util.AbstractID
 
 import scala.tools.nsc.interpreter._
@@ -96,6 +98,12 @@ class FlinkILoop(
     (scalaBenv,scalaSenv)
   }
 
+  val (scalaBTenv: BatchTableEnvironment, scalaSTenv: StreamTableEnvironment) = {
+    val scalaBTenv = TableEnvironment.getTableEnvironment(scalaBenv)
+    val scalaSTenv = TableEnvironment.getTableEnvironment(scalaSenv)
+    (scalaBTenv, scalaSTenv)
+  }
+
   /**
    * creates a temporary directory to store compiled console files
    */
@@ -139,7 +147,8 @@ class FlinkILoop(
     "org.apache.flink.api.scala._",
     "org.apache.flink.api.scala.utils._",
     "org.apache.flink.streaming.api.scala._",
-    "org.apache.flink.streaming.api.windowing.time._"
+    "org.apache.flink.streaming.api.windowing.time._",
+    "org.apache.flink.table.api.scala._"
   )
 
   override def createInterpreter(): Unit = {
@@ -152,6 +161,8 @@ class FlinkILoop(
       // set execution environment
       intp.bind("benv", this.scalaBenv)
       intp.bind("senv", this.scalaSenv)
+      intp.bind("btenv", this.scalaBTenv)
+      intp.bind("stenv", this.scalaSTenv)
     }
   }
 

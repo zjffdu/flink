@@ -78,7 +78,18 @@ do
     fi
 done
 
+
+FLINK_OPT_CLASSPATH=""
+if [[ -n "$FLINK_OPT_DIR" ]]
+then
+    for jar in $FLINK_OPT_DIR/*.jar; do
+        FLINK_OPT_CLASSPATH+="$jar:"
+    done
+fi
+
 log_setting=""
+
+FLINK_CLASSPATH=$FLINK_CLASSPATH:$FLINK_OPT_CLASSPATH
 
 if [[ $1 = "yarn" ]]
 then
@@ -87,6 +98,7 @@ log=$FLINK_LOG_DIR/flink-$FLINK_IDENT_STRING-scala-shell-yarn-$HOSTNAME.log
 log_setting="-Dlog.file="$log" -Dlog4j.configuration=file:"$FLINK_CONF_DIR"/log4j-yarn-session.properties -Dlogback.configurationFile=file:"$FLINK_CONF_DIR"/logback-yarn.xml"
 fi
 
+echo $FLINK_CLASSPATH
 if ${EXTERNAL_LIB_FOUND}
 then
     java -Dscala.color $FLINK_SCALA_SHELL_JAVA_OPTS -cp "$FLINK_CLASSPATH" $log_setting org.apache.flink.api.scala.FlinkShell $@ --addclasspath "$EXT_CLASSPATH"
