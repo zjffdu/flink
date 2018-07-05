@@ -749,6 +749,35 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			}
 		}
 
+		// add hadoop config files
+		String hadoopConfDir = System.getenv("HADOOP_CONF_DIR");
+		String yarnConfDir = System.getenv("YARN_CONF_DIR");
+		if (hadoopConfDir != null) {
+			File hadoopConfFile = new File(hadoopConfDir);
+			if (hadoopConfFile.isFile() || !hadoopConfFile.exists()) {
+				LOG.warn("Either HADOOP_CONF_DIR is not a folder or doesn't exist");
+			} else {
+				for (File file : hadoopConfFile.listFiles()) {
+					if (file.isFile()) {
+						systemShipFiles.add(file);
+					}
+				}
+			}
+		}
+
+		if (yarnConfDir != null) {
+			File yarnConfFile = new File(yarnConfDir);
+			if (yarnConfFile.isFile() || !yarnConfFile.exists()) {
+				LOG.warn("Either YARN_CONF_DIR is not a folder or doesn't exist");
+			} else {
+				for (File file : yarnConfFile.listFiles()) {
+					if (file.isFile()) {
+						systemShipFiles.add(file);
+					}
+				}
+			}
+		}
+
 		addLibFolderToShipFiles(systemShipFiles);
 
 		// Set-up ApplicationSubmissionContext for the application

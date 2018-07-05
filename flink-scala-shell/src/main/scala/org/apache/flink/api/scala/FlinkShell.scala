@@ -56,11 +56,13 @@ object FlinkShell {
     name: Option[String] = None,
     queue: Option[String] = None,
     slots: Option[Int] = None,
-    taskManagerMemory: Option[String] = None
+    taskManagerMemory: Option[String] = None,
+    flinkJar: Option[String] = None
   )
 
   /** Buffered reader to substitute input in test */
   var bufferedReader: Option[BufferedReader] = None
+  var iLoop: FlinkILoop = _
 
   def main(args: Array[String]) {
     val parser = new scopt.OptionParser[Config]("start-scala-shell.sh") {
@@ -120,7 +122,10 @@ object FlinkShell {
           case (x, c) =>
             val xArray = x.split(":")
             c.copy(externalJars = Option(xArray))
-        } text "Specifies additional jars to be used in Flink"
+        } text "Specifies additional jars to be used in Flink",
+        opt[String]("flinkJar") abbr ("j") valueName ("<arg>") action {
+          (x, c) => c.copy(yarnConfig = Some(ensureYarnConfig(c).copy(flinkJar = Some(x))))
+        } text "FlinkJar used for yarn mode"
       )
 
       opt[String]("configDir").optional().action {
@@ -238,6 +243,7 @@ object FlinkShell {
     settings.Yreplsync.value = true
 
     try {
+      iLoop = repl
       repl.process(settings)
     } finally {
       repl.closeInterpreter()
@@ -274,6 +280,7 @@ object FlinkShell {
     yarnConfig.name.foreach((name) => args ++= Seq("-ynm", name.toString))
     yarnConfig.queue.foreach((queue) => args ++= Seq("-yqu", queue.toString))
     yarnConfig.slots.foreach((slots) => args ++= Seq("-ys", slots.toString))
+    yarnConfig.flinkJar.foreach((flinkJar) => args ++= Seq("-yj", flinkJar.toString))
 
     val frontend = new CliFrontend(configuration,
       CliFrontend.loadCustomCommandLines(configuration, configurationDirectory))
