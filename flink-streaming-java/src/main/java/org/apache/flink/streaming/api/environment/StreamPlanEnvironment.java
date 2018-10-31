@@ -19,11 +19,13 @@ package org.apache.flink.streaming.api.environment;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.client.program.OptimizerPlanEnvironment;
 import org.apache.flink.client.program.PreviewPlanEnvironment;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.GlobalConfiguration;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 
 /**
@@ -54,7 +56,7 @@ public class StreamPlanEnvironment extends StreamExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+	protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
 		transformations.clear();
 
 		if (env instanceof OptimizerPlanEnvironment) {
@@ -64,5 +66,10 @@ public class StreamPlanEnvironment extends StreamExecutionEnvironment {
 		}
 
 		throw new OptimizerPlanEnvironment.ProgramAbortException();
+	}
+
+	@Override
+	public void cancel(String jobId) {
+
 	}
 }

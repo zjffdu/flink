@@ -145,14 +145,12 @@ object FlinkShell {
       case ExecutionMode.LOCAL => // Local mode
         val config = configuration
         config.setInteger(JobManagerOptions.PORT, 0)
-
         val miniClusterConfig = new MiniClusterConfiguration.Builder()
           .setConfiguration(config)
           .build()
         val cluster = new MiniCluster(miniClusterConfig)
         cluster.start()
         val port = cluster.getRestAddress.get.getPort
-
         println(s"\nStarting local Flink cluster (host: localhost, port: $port).\n")
         ("localhost", port, Some(Left(cluster)))
 
@@ -193,6 +191,8 @@ object FlinkShell {
 
     val configDirectory = new File(confDirPath)
     val configuration = GlobalConfiguration.loadConfiguration(configDirectory.getAbsolutePath)
+    configuration.setString("flink.yarn.jars",
+      config.externalJars.getOrElse(Array.empty[String]).mkString(":"))
 
     val (repl, cluster) = try {
       val (host, port, cluster) = fetchConnectionInfo(configuration, config)
@@ -276,7 +276,7 @@ object FlinkShell {
     val clusterSpecification = customCLI.getClusterSpecification(commandLine)
 
     val cluster = clusterDescriptor.deploySessionCluster(clusterSpecification)
-
+    cluster.setDetached(true)
     val inetSocketAddress = AkkaUtils.getInetSocketAddressFromAkkaURL(
       cluster.getClusterConnectionInfo.getAddress)
 

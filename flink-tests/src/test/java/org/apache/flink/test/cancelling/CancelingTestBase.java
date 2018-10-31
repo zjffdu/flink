@@ -94,7 +94,7 @@ public abstract class CancelingTestBase extends TestLogger {
 		ClusterClient<?> client = CLUSTER.getClusterClient();
 		client.setDetached(true);
 
-		JobSubmissionResult jobSubmissionResult = client.submitJob(jobGraph, CancelingTestBase.class.getClassLoader());
+		JobSubmissionResult jobSubmissionResult = client.submitJob(jobGraph, CancelingTestBase.class.getClassLoader(), false);
 
 		Deadline submissionDeadLine = new FiniteDuration(2, TimeUnit.MINUTES).fromNow();
 

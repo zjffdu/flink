@@ -19,6 +19,7 @@
 package org.apache.flink.api.java;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
@@ -143,8 +144,13 @@ public class FlinkILoopTest extends TestLogger {
 		}
 
 		@Override
-		public JobExecutionResult executePlan(Plan plan) throws Exception {
+		public JobExecutionResult executePlan(Plan plan, boolean detached) throws Exception {
 			return null;
+		}
+
+		@Override
+		public void cancelPlan(JobID jobId) throws Exception {
+
 		}
 
 		@Override

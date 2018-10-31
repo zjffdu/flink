@@ -20,6 +20,7 @@ package org.apache.flink.client.program;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.runtime.client.JobStatusMessage;
@@ -62,20 +63,27 @@ public class MiniClusterClient extends ClusterClient<MiniClusterClient.MiniClust
 	}
 
 	@Override
-	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader) throws ProgramInvocationException {
+	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader, boolean detached) throws ProgramInvocationException {
 		final CompletableFuture<JobSubmissionResult> jobSubmissionResultFuture = submitJob(jobGraph);
 
-		if (isDetached()) {
-			try {
-				return jobSubmissionResultFuture.get();
-			} catch (InterruptedException | ExecutionException e) {
-				ExceptionUtils.checkInterrupted(e);
+		JobSubmissionResult jobSubmissionResult = null;
+		try {
+			jobSubmissionResult = jobSubmissionResultFuture.get();
+		} catch (InterruptedException | ExecutionException e) {
+			ExceptionUtils.checkInterrupted(e);
 
-				throw new ProgramInvocationException("Could not run job in detached mode.", jobGraph.getJobID(), e);
+			throw new ProgramInvocationException("Could not run job in detached mode.", jobGraph.getJobID(), e);
+		}
+
+		if (jobListeners != null) {
+			for (JobListener jobListener : jobListeners) {
+				jobListener.onJobSubmitted(jobSubmissionResult.getJobID());
 			}
+		}
+		if (isDetached() || detached) {
+			return jobSubmissionResult;
 		} else {
-			final CompletableFuture<JobResult> jobResultFuture = jobSubmissionResultFuture.thenCompose(
-				(JobSubmissionResult ignored) -> requestJobResult(jobGraph.getJobID()));
+			final CompletableFuture<JobResult> jobResultFuture = requestJobResult(jobSubmissionResult.getJobID());
 
 			final JobResult jobResult;
 			try {

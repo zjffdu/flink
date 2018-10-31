@@ -21,6 +21,7 @@ package org.apache.flink.yarn.util;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.client.program.ClusterClient;
+import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.client.JobStatusMessage;
 import org.apache.flink.runtime.jobgraph.JobGraph;
@@ -75,6 +76,12 @@ public class FakeClusterClient extends ClusterClient<ApplicationId> {
 
 	@Override
 	public String stopWithSavepoint(JobID jobId, boolean advanceToEndOfEventTime, @Nullable String savepointDirectory) throws Exception {
+		return null;
+	}
+
+	@Override
+	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader, boolean detached) throws ProgramInvocationException {
+
 		throw new UnsupportedOperationException("Not needed in test.");
 	}
 

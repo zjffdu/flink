@@ -25,6 +25,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.cache.DistributedCache.DistributedCacheEntry;
 import org.apache.flink.api.common.io.FileInputFormat;
@@ -131,6 +132,8 @@ public abstract class ExecutionEnvironment {
 	/** Flag to indicate whether sinks have been cleared in previous executions. */
 	private boolean wasExecuted = false;
 
+	private List<JobListener> jobListeners = new ArrayList<>();
+
 	/**
 	 * Creates a new Execution Environment.
 	 */
@@ -180,6 +183,14 @@ public abstract class ExecutionEnvironment {
 	 */
 	public void setParallelism(int parallelism) {
 		config.setParallelism(parallelism);
+	}
+
+	public void addJobListener(JobListener jobListener) {
+		this.jobListeners.add(jobListener);
+	}
+
+	public List<JobListener> getJobListeners() {
+		return this.jobListeners;
 	}
 
 	/**
@@ -283,7 +294,6 @@ public abstract class ExecutionEnvironment {
 	public void setSessionTimeout(long timeout) {
 		throw new IllegalStateException("Support for sessions is currently disabled. " +
 				"It will be enabled in future Flink versions.");
-		// Session management is disabled, revert this commit to enable
 		//if (timeout < 0) {
 		//	throw new IllegalArgumentException("The session timeout must not be less than zero.");
 		//}
@@ -829,10 +839,62 @@ public abstract class ExecutionEnvironment {
 	 *
 	 * <p>The program execution will be logged and displayed with the given job name.
 	 *
+	 * @param jobName
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 * @throws Exception Thrown, if the program executions fails.
 	 */
-	public abstract JobExecutionResult execute(String jobName) throws Exception;
+	public JobExecutionResult execute(String jobName) throws Exception {
+		return (JobExecutionResult) executeInternal(jobName, false);
+	}
+
+	/**
+	 * Triggers the program execution. The environment will execute all parts of the program that have
+	 * resulted in a "sink" operation. Sink operations are for example printing results ({@link DataSet#print()},
+	 * writing results (e.g. {@link DataSet#writeAsText(String)},
+	 * {@link DataSet#write(org.apache.flink.api.common.io.FileOutputFormat, String)}, or other generic
+	 * data sinks created with {@link DataSet#output(org.apache.flink.api.common.io.OutputFormat)}.
+	 *
+	 * <p>The program execution will be logged and displayed with the given job name.
+	 * And it can run in either sync or async mode (detached mode) which depends on the parameter {{@param detached}}
+	 *
+	 * @param jobName
+	 * @param detached  whether in async mode, true for async, false for sync
+	 * @return The result is {@link JobSubmissionResult} when it is detached, otherwise it is {@link JobExecutionResult}
+	 * when it is non-detached mode
+	 * @throws Exception
+	 */
+	protected abstract JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception;
+
+	/**
+	 * Similar with method {@link #execute()}, but just execute job in async mode.
+	 *
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync() throws Exception {
+		return executeAsync(getDefaultName());
+	}
+
+	/**
+	 * Similar with method {@link #execute(String jobName)}, but just execute job in async mode.
+	 *
+	 * @param jobName
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync(String jobName) throws Exception {
+		return executeInternal(jobName, true);
+	}
+
+	/**
+	 * Cancel specified job.
+	 *
+	 * @param jobId
+	 * @throws Exception
+	 */
+	public abstract void cancel(JobID jobId) throws Exception;
 
 	/**
 	 * Creates the plan with which the system will execute the program, and returns it as

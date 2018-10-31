@@ -137,7 +137,7 @@ public class RegionFailoverITCase extends TestLogger {
 		try {
 			JobGraph jobGraph = createJobGraph();
 			ClusterClient<?> client = cluster.getClusterClient();
-			client.submitJob(jobGraph, RegionFailoverITCase.class.getClassLoader());
+			client.submitJob(jobGraph, RegionFailoverITCase.class.getClassLoader(), false);
 			verifyAfterJobExecuted();
 		}
 		catch (Exception e) {

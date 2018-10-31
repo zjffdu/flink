@@ -187,7 +187,7 @@ public abstract class AbstractQueryableStateTestBase extends TestLogger {
 			final JobGraph jobGraph = autoCancellableJob.getJobGraph();
 
 			clusterClient.setDetached(true);
-			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader());
+			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader(), false);
 
 			final AtomicLongArray counts = new AtomicLongArray(numKeys);
 
@@ -300,7 +300,7 @@ public abstract class AbstractQueryableStateTestBase extends TestLogger {
 
 		boolean caughtException = false;
 		try {
-			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader());
+			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader(), false);
 		} catch (ProgramInvocationException e) {
 			String failureCause = ExceptionUtils.stringifyException(e);
 			assertThat(failureCause, containsString("KvState with name '" + queryName + "' has already been registered by another operator"));
@@ -349,7 +349,7 @@ public abstract class AbstractQueryableStateTestBase extends TestLogger {
 			final JobGraph jobGraph = autoCancellableJob.getJobGraph();
 
 			clusterClient.setDetached(true);
-			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader());
+			clusterClient.submitJob(jobGraph, AbstractQueryableStateTestBase.class.getClassLoader(), false);
 
 			executeValueQuery(deadline, client, jobId, "hakuna", valueState, numElements);
 		}

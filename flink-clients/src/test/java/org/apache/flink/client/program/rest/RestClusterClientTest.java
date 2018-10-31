@@ -232,9 +232,8 @@ public class RestClusterClientTest extends TestLogger {
 
 			try {
 				Assert.assertFalse(submitHandler.jobSubmitted);
-				restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader());
+				restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader(), false);
 				Assert.assertTrue(submitHandler.jobSubmitted);
-
 				Assert.assertFalse(terminationHandler.jobCanceled);
 				restClusterClient.cancel(jobId);
 				Assert.assertTrue(terminationHandler.jobCanceled);
@@ -258,7 +257,7 @@ public class RestClusterClientTest extends TestLogger {
 
 			try {
 				restClusterClient.setDetached(true);
-				final JobSubmissionResult jobSubmissionResult = restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader());
+				final JobSubmissionResult jobSubmissionResult = restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader(), false);
 
 				// if the detached mode didn't work, then we would not reach this point because the execution result
 				// retrieval would have failed.
@@ -364,10 +363,9 @@ public class RestClusterClientTest extends TestLogger {
 
 			try {
 				JobExecutionResult jobExecutionResult;
-
 				jobExecutionResult = (JobExecutionResult) restClusterClient.submitJob(
 					jobGraph,
-					ClassLoader.getSystemClassLoader());
+					ClassLoader.getSystemClassLoader(), false);
 				assertThat(jobExecutionResult.getJobID(), equalTo(jobId));
 				assertThat(jobExecutionResult.getNetRuntime(), equalTo(Long.MAX_VALUE));
 				assertThat(
@@ -375,7 +373,7 @@ public class RestClusterClientTest extends TestLogger {
 					equalTo(Collections.singletonMap("testName", 1.0)));
 
 				try {
-					restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader());
+					restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader(), false);
 					fail("Expected exception not thrown.");
 				} catch (final ProgramInvocationException e) {
 					final Optional<RuntimeException> cause = ExceptionUtils.findThrowable(e, RuntimeException.class);
@@ -595,7 +593,7 @@ public class RestClusterClientTest extends TestLogger {
 			RestClusterClient<?> restClusterClient = createRestClusterClient(restServerEndpoint.getServerAddress().getPort());
 
 			try {
-				restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader());
+				restClusterClient.submitJob(jobGraph, ClassLoader.getSystemClassLoader(), false);
 			} catch (final ProgramInvocationException expected) {
 				// expected
 			} finally {

@@ -23,6 +23,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.io.FileInputFormat;
@@ -35,6 +36,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.api.java.Utils;
 import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -50,6 +52,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 import org.apache.flink.runtime.state.StateBackend;
@@ -146,6 +149,7 @@ public abstract class StreamExecutionEnvironment {
 
 	protected final List<Tuple2<String, DistributedCache.DistributedCacheEntry>> cacheFile = new ArrayList<>();
 
+	private List<JobListener> jobListeners = new ArrayList<>();
 
 	// --------------------------------------------------------------------------------------------
 	// Constructor and Properties
@@ -224,6 +228,14 @@ public abstract class StreamExecutionEnvironment {
 	 */
 	public int getMaxParallelism() {
 		return config.getMaxParallelism();
+	}
+
+	public void addJobListener(JobListener jobListener) {
+		this.jobListeners.add(jobListener);
+	}
+
+	public List<JobListener> getJobListeners() {
+		return this.jobListeners;
 	}
 
 	/**
@@ -1504,7 +1516,23 @@ public abstract class StreamExecutionEnvironment {
 	public JobExecutionResult execute(String jobName) throws Exception {
 		Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
 
-		return execute(getStreamGraph(jobName));
+		return (JobExecutionResult) executeInternal(
+			getStreamGraph(jobName), SavepointRestoreSettings.none(), false);
+	}
+
+	/**
+	 * Triggers the program execution. The environment will execute all parts of
+	 * the program that have resulted in a "sink" operation. Sink operations are
+	 * for example printing results or forwarding them to a message queue.
+	 *
+	 * <p>The program execution will be logged and displayed with the provided name
+	 *
+	 * @param streamGraph the stream graph representing the transformations
+	 * @return The result of the job execution, containing elapsed time and accumulators.
+	 * @throws Exception which occurs during job execution.
+	 */
+	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+		return (JobExecutionResult) executeInternal(streamGraph, SavepointRestoreSettings.none(), false);
 	}
 
 	/**
@@ -1513,11 +1541,44 @@ public abstract class StreamExecutionEnvironment {
 	 * for example printing results or forwarding them to a message queue.
 	 *
 	 * @param streamGraph the stream graph representing the transformations
+	 * @param savepointRestoreSettings
+	 * @param detached Whether it is sync or async mode.
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 * @throws Exception which occurs during job execution.
 	 */
-	@Internal
-	public abstract JobExecutionResult execute(StreamGraph streamGraph) throws Exception;
+	protected abstract JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception;
+
+	/**
+	 * Similar with method {@link #execute()}, but just execute job in async mode.
+	 *
+	 * @param jobName
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync(String jobName) throws Exception {
+		return executeInternal(getStreamGraph(jobName), SavepointRestoreSettings.none(), true);
+	}
+
+	/**
+	 * Similar with method {@link #execute()}, but just execute job in async mode.
+	 *
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync() throws Exception {
+		return executeAsync(DEFAULT_JOB_NAME);
+	}
+
+	/**
+	 * Cancel the specified job.
+	 * @param jobId
+	 * @throws Exception
+	 */
+	public void cancel(String jobId) throws Exception {
+		throw new UnsupportedOperationException("cancel is not supported");
+	}
 
 	/**
 	 * Getter of the {@link org.apache.flink.streaming.api.graph.StreamGraph} of the streaming job.

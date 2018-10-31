@@ -19,12 +19,13 @@ package org.apache.flink.streaming.api.environment;
 
 import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.streaming.api.graph.StreamGraph;
@@ -75,14 +76,8 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 		return configuration;
 	}
 
-	/**
-	 * Executes the JobGraph of the on a mini cluster of ClusterUtil with a user
-	 * specified name.
-	 *
-	 * @return The result of the job execution, containing elapsed time and accumulators.
-	 */
 	@Override
-	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+	protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
 		JobGraph jobGraph = streamGraph.getJobGraph();
 		jobGraph.setAllowQueuedScheduling(true);
 
@@ -109,16 +104,20 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 		}
 
 		MiniCluster miniCluster = new MiniCluster(cfg);
-
 		try {
 			miniCluster.start();
 			configuration.setInteger(RestOptions.PORT, miniCluster.getRestAddress().get().getPort());
 
-			return miniCluster.executeJobBlocking(jobGraph);
+			return miniCluster.executeJob(jobGraph, detached);
 		}
 		finally {
 			transformations.clear();
 			miniCluster.close();
 		}
+	}
+
+	@Override
+	public void cancel(String jobId) {
+
 	}
 }

@@ -19,7 +19,6 @@
 package org.apache.flink.runtime.minicluster;
 
 import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.io.FileOutputFormat;
@@ -93,7 +92,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -180,6 +181,8 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 
 	/** Flag marking the mini cluster as started/running. */
 	private volatile boolean running;
+
+	private Map<JobID, CompletableFuture<JobResult>> jobResultMap = new HashMap<>();
 
 	// ------------------------------------------------------------------------
 
@@ -606,14 +609,22 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 	 *         or if the job terminally failed.
 	 */
 	@Override
-	public JobExecutionResult executeJobBlocking(JobGraph job) throws JobExecutionException, InterruptedException {
+	public JobSubmissionResult executeJob(JobGraph job, boolean detached) throws JobExecutionException, InterruptedException {
 		checkNotNull(job, "job is null");
 
 		final CompletableFuture<JobSubmissionResult> submissionFuture = submitJob(job);
+		if (detached) {
+			try {
+				return submissionFuture.get();
+			} catch (ExecutionException e) {
+				throw new JobExecutionException(job.getJobID(), "Fail to submit Job", ExceptionUtils.stripExecutionException(e));
+			}
+		}
 
 		final CompletableFuture<JobResult> jobResultFuture = submissionFuture.thenCompose(
 			(JobSubmissionResult ignored) -> requestJobResult(job.getJobID()));
 
+		jobResultMap.put(job.getJobID(), jobResultFuture);
 		final JobResult jobResult;
 
 		try {
@@ -648,6 +659,18 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 
 		return acknowledgeCompletableFuture.thenApply(
 			(Acknowledge ignored) -> new JobSubmissionResult(jobGraph.getJobID()));
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+		final DispatcherGateway dispatcherGateway;
+		try {
+			dispatcherGateway = getDispatcherGatewayFuture().get();
+		} catch (InterruptedException e) {
+			ExceptionUtils.checkInterrupted(e);
+			throw new Exception(e);
+		}
+		dispatcherGateway.cancelJob(jobId, Time.seconds(10));
 	}
 
 	public CompletableFuture<JobResult> requestJobResult(JobID jobId) {

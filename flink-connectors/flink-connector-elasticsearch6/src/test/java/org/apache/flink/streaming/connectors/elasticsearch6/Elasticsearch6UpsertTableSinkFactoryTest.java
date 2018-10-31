@@ -18,13 +18,14 @@
 
 package org.apache.flink.streaming.connectors.elasticsearch6;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.formats.json.JsonRowSerializationSchema;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -184,7 +185,12 @@ public class Elasticsearch6UpsertTableSinkFactoryTest extends ElasticsearchUpser
 	private static class StreamExecutionEnvironmentMock extends StreamExecutionEnvironment {
 
 		@Override
-		public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+		public JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void cancel(String jobId) throws Exception {
 			throw new UnsupportedOperationException();
 		}
 	}

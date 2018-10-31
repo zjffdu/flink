@@ -20,6 +20,8 @@ package org.apache.flink.client;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.common.Program;
@@ -178,7 +180,7 @@ public class LocalExecutor extends PlanExecutor {
 	 *                   caused an exception.
 	 */
 	@Override
-	public JobExecutionResult executePlan(Plan plan) throws Exception {
+	public JobSubmissionResult executePlan(Plan plan, boolean detached) throws Exception {
 		if (plan == null) {
 			throw new IllegalArgumentException("The plan may not be null.");
 		}
@@ -219,10 +221,10 @@ public class LocalExecutor extends PlanExecutor {
 				JobGraphGenerator jgg = new JobGraphGenerator(jobExecutorServiceConfiguration);
 				JobGraph jobGraph = jgg.compileJobGraph(op, plan.getJobId());
 
-				return jobExecutorService.executeJobBlocking(jobGraph);
+				return jobExecutorService.executeJob(jobGraph, detached);
 			}
 			finally {
-				if (shutDownAtEnd) {
+				if (shutDownAtEnd && !detached) {
 					stop();
 				}
 			}
@@ -285,7 +287,15 @@ public class LocalExecutor extends PlanExecutor {
 	 *                   caused an exception.
 	 */
 	public static JobExecutionResult execute(Plan plan) throws Exception {
-		return new LocalExecutor().executePlan(plan);
+		return (JobExecutionResult) new LocalExecutor().executePlan(plan, false);
+	}
+
+	@Override
+	public void cancelPlan(JobID jobId) throws Exception {
+		while (jobExecutorService == null) {
+			Thread.sleep(1000);
+		}
+		jobExecutorService.cancel(jobId);
 	}
 
 	/**

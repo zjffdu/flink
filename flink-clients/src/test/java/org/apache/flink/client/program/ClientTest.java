@@ -170,8 +170,7 @@ public class ClientTest extends TestLogger {
 	public void shouldSubmitToJobClient() throws Exception {
 		final ClusterClient<?> clusterClient = new MiniClusterClient(new Configuration(), MINI_CLUSTER_RESOURCE.getMiniCluster());
 		clusterClient.setDetached(true);
-		JobSubmissionResult result = clusterClient.run(program.getPlanWithJars(), 1);
-
+		JobSubmissionResult result = clusterClient.run(program.getPlanWithJars(), 1, false);
 		assertNotNull(result);
 
 		program.deleteExtractedLibraries();

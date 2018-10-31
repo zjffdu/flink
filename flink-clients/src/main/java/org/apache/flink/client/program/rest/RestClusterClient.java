@@ -24,6 +24,7 @@ import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.NewClusterClient;
@@ -231,21 +232,26 @@ public class RestClusterClient<T> extends ClusterClient<T> implements NewCluster
 	}
 
 	@Override
-	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader) throws ProgramInvocationException {
+	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader, boolean detached) throws ProgramInvocationException {
 		log.info("Submitting job {} (detached: {}).", jobGraph.getJobID(), isDetached());
 
 		final CompletableFuture<JobSubmissionResult> jobSubmissionFuture = submitJob(jobGraph);
-
-		if (isDetached()) {
-			try {
-				return jobSubmissionFuture.get();
-			} catch (Exception e) {
-				throw new ProgramInvocationException("Could not submit job",
-					jobGraph.getJobID(), ExceptionUtils.stripExecutionException(e));
+		JobSubmissionResult jobSubmissionResult = null;
+		try {
+			jobSubmissionResult = jobSubmissionFuture.get();
+		} catch (Exception e) {
+			throw new ProgramInvocationException("Could not submit job",
+				jobGraph.getJobID(), ExceptionUtils.stripExecutionException(e));
+		}
+		if (jobListeners != null) {
+			for (JobListener jobListener : jobListeners) {
+				jobListener.onJobSubmitted(jobSubmissionResult.getJobID());
 			}
+		}
+		if (isDetached()) {
+			return jobSubmissionResult;
 		} else {
-			final CompletableFuture<JobResult> jobResultFuture = jobSubmissionFuture.thenCompose(
-				ignored -> requestJobResult(jobGraph.getJobID()));
+			final CompletableFuture<JobResult> jobResultFuture = requestJobResult(jobGraph.getJobID());
 
 			final JobResult jobResult;
 			try {
