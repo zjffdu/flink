@@ -92,7 +92,7 @@ public class BigUserProgramJobSubmitITCase extends TestLogger {
 
 		try {
 			restClusterClient.setDetached(false);
-			restClusterClient.submitJob(jobGraph, BigUserProgramJobSubmitITCase.class.getClassLoader());
+			restClusterClient.submitJob(jobGraph, BigUserProgramJobSubmitITCase.class.getClassLoader(), false);
 
 			List<String> expected = Arrays.asList("x 1 0", "x 3 0", "x 5 0");
 

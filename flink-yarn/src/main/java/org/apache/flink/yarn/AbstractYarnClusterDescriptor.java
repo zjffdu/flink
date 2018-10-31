@@ -18,6 +18,7 @@
 
 package org.apache.flink.yarn;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.client.deployment.ClusterDeploymentException;
 import org.apache.flink.client.deployment.ClusterDescriptor;
@@ -780,6 +781,11 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			// add the user code jars from the provided JobGraph
 			for (org.apache.flink.core.fs.Path path : jobGraph.getUserJars()) {
 				userJarFiles.add(new File(path.toUri()));
+			}
+		}
+		if (!StringUtils.isBlank(configuration.getString("flink.yarn.jars", ""))) {
+			for (String jar : configuration.getString("flink.yarn.jars", "").split(":")) {
+				userJarFiles.add(new File(jar));
 			}
 		}
 

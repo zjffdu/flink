@@ -23,6 +23,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.functions.StoppableFunction;
@@ -35,6 +36,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
@@ -49,6 +51,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 import org.apache.flink.runtime.state.StateBackend;
@@ -143,6 +146,7 @@ public abstract class StreamExecutionEnvironment {
 
 	protected final List<Tuple2<String, DistributedCache.DistributedCacheEntry>> cacheFile = new ArrayList<>();
 
+	private List<JobListener> jobListeners = new ArrayList<>();
 
 	// --------------------------------------------------------------------------------------------
 	// Constructor and Properties
@@ -221,6 +225,14 @@ public abstract class StreamExecutionEnvironment {
 	 */
 	public int getMaxParallelism() {
 		return config.getMaxParallelism();
+	}
+
+	public void addJobListener(JobListener jobListener) {
+		this.jobListeners.add(jobListener);
+	}
+
+	public List<JobListener> getJobListeners() {
+		return this.jobListeners;
 	}
 
 	/**
@@ -1522,7 +1534,35 @@ public abstract class StreamExecutionEnvironment {
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 * @throws Exception which occurs during job execution.
 	 */
-	public abstract JobExecutionResult execute(String jobName) throws Exception;
+	public JobExecutionResult execute(String jobName) throws Exception {
+		return executeInternal(jobName, false, SavepointRestoreSettings.none()).getJobExecutionResult();
+	}
+
+	public JobExecutionResult execute(String jobName, SavepointRestoreSettings savepointRestoreSettings) throws Exception {
+		return executeInternal(jobName, false, savepointRestoreSettings).getJobExecutionResult();
+	}
+
+	public abstract JobSubmissionResult executeInternal(String jobName,
+														boolean detached,
+														SavepointRestoreSettings savepointRestoreSettings) throws Exception;
+
+	public JobSubmissionResult submit(String jobName) throws Exception {
+		return executeInternal(jobName, true, SavepointRestoreSettings.none());
+	}
+
+	public JobSubmissionResult submit() throws Exception {
+		return submit(DEFAULT_JOB_NAME);
+	}
+
+	public void cancel(String jobId) throws Exception {
+		throw new UnsupportedOperationException("cancel is not supported");
+	}
+
+	public String cancelWithSavepoint(String jobId, String path) throws Exception {
+		throw new UnsupportedOperationException("cancelWithSavepoint is not supported");
+	}
+
+	public abstract String triggerSavepoint(String jobId, String path) throws Exception;
 
 	/**
 	 * Getter of the {@link org.apache.flink.streaming.api.graph.StreamGraph} of the streaming job.

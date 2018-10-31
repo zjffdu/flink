@@ -21,6 +21,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.client.program.ContextEnvironment;
 import org.apache.flink.client.program.DetachedEnvironment;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.util.Preconditions;
 
@@ -47,7 +48,9 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobExecutionResult executeInternal(String jobName,
+											  boolean detached,
+											  SavepointRestoreSettings savepointRestoreSettings) throws Exception {
 		Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
 
 		StreamGraph streamGraph = this.getStreamGraph();
@@ -63,8 +66,18 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
 		} else {
 			return ctx
 				.getClient()
-				.run(streamGraph, ctx.getJars(), ctx.getClasspaths(), ctx.getUserCodeClassLoader(), ctx.getSavepointRestoreSettings())
+				.run(streamGraph, ctx.getJars(), ctx.getClasspaths(), ctx.getUserCodeClassLoader(), ctx.getSavepointRestoreSettings(), detached)
 				.getJobExecutionResult();
 		}
+	}
+
+	@Override
+	public void cancel(String jobId) {
+
+	}
+
+	@Override
+	public String triggerSavepoint(String jobId, String path) {
+		return null;
 	}
 }

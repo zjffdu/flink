@@ -23,7 +23,7 @@ import java.io._
 import org.apache.flink.client.cli.{CliFrontend, CliFrontendParser}
 import org.apache.flink.client.deployment.ClusterDescriptor
 import org.apache.flink.client.program.ClusterClient
-import org.apache.flink.configuration.{Configuration, GlobalConfiguration, JobManagerOptions}
+import org.apache.flink.configuration._
 import org.apache.flink.runtime.akka.AkkaUtils
 import org.apache.flink.runtime.minicluster.{MiniCluster, MiniClusterConfiguration}
 
@@ -148,6 +148,10 @@ object FlinkShell {
 
         val miniClusterConfig = new MiniClusterConfiguration.Builder()
           .setConfiguration(config)
+          .setNumTaskManagers(configuration.getInteger(ConfigConstants.LOCAL_NUMBER_TASK_MANAGER,
+            ConfigConstants.DEFAULT_LOCAL_NUMBER_TASK_MANAGER))
+          .setNumSlotsPerTaskManager(
+            configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS, 1))
           .build()
         val cluster = new MiniCluster(miniClusterConfig)
         cluster.start()
@@ -193,6 +197,7 @@ object FlinkShell {
 
     val configDirectory = new File(confDirPath)
     val configuration = GlobalConfiguration.loadConfiguration(configDirectory.getAbsolutePath)
+    configuration.setString("flink.yarn.jars", config.externalJars.getOrElse(Array.empty[String]).mkString(":"))
 
     val (repl, cluster) = try {
       val (host, port, cluster) = fetchConnectionInfo(configuration, config)
@@ -276,7 +281,7 @@ object FlinkShell {
     val clusterSpecification = customCLI.getClusterSpecification(commandLine)
 
     val cluster = clusterDescriptor.deploySessionCluster(clusterSpecification)
-
+    cluster.setDetached(true)
     val inetSocketAddress = AkkaUtils.getInetSocketAddressFromAkkaURL(
       cluster.getClusterConnectionInfo.getAddress)
 

@@ -148,8 +148,8 @@ public class YarnClusterClient extends ClusterClient<ApplicationId> {
 	}
 
 	@Override
-	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader) throws ProgramInvocationException {
-		if (isDetached()) {
+	public JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader, boolean detached) throws ProgramInvocationException {
+		if (isDetached() || detached) {
 			if (newlyCreatedCluster) {
 				stopAfterJob(jobGraph.getJobID());
 			}
@@ -158,6 +158,7 @@ public class YarnClusterClient extends ClusterClient<ApplicationId> {
 			return super.run(jobGraph, classLoader);
 		}
 	}
+
 
 	@Override
 	public String getWebInterfaceURL() {

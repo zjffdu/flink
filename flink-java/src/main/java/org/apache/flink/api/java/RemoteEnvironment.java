@@ -20,11 +20,7 @@ package org.apache.flink.api.java;
 
 import org.apache.flink.annotation.Public;
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.api.common.InvalidProgramException;
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.common.JobID;
-import org.apache.flink.api.common.Plan;
-import org.apache.flink.api.common.PlanExecutor;
+import org.apache.flink.api.common.*;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.ShutdownHookUtil;
 
@@ -161,19 +157,36 @@ public class RemoteEnvironment extends ExecutionEnvironment {
 	// ------------------------------------------------------------------------
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		PlanExecutor executor = getExecutor();
 
 		Plan p = createProgramPlan(jobName);
 
 		// Session management is disabled, revert this commit to enable
-		//p.setJobId(jobID);
-		//p.setSessionTimeout(sessionTimeout);
+		p.setJobId(jobID);
+		p.setSessionTimeout(sessionTimeout);
 
-		JobExecutionResult result = executor.executePlan(p);
-
-		this.lastJobExecutionResult = result;
+		JobSubmissionResult result = executor.executePlan(p, detached);
+		if (result.isJobExecutionResult()) {
+			this.lastJobExecutionResult = (JobExecutionResult) result;
+		}
 		return result;
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+		PlanExecutor executor = getExecutor();
+		if (executor != null) {
+			executor.cancelPlan(jobId);
+		}
+	}
+
+	@Override
+	public void stop() throws Exception {
+		PlanExecutor executor = getExecutor();
+		if (executor != null) {
+			executor.stop();
+		}
 	}
 
 	@Override
@@ -209,6 +222,7 @@ public class RemoteEnvironment extends ExecutionEnvironment {
 			executor = PlanExecutor.createRemoteExecutor(host, port, clientConfiguration,
 				jarFiles, globalClasspaths);
 			executor.setPrintStatusDuringExecution(getConfig().isSysoutLoggingEnabled());
+			executor.setJobListeners(this.getJobListeners());
 		}
 
 		// if we are using sessions, we keep the executor running
@@ -250,7 +264,7 @@ public class RemoteEnvironment extends ExecutionEnvironment {
 	//  Shutdown hooks and reapers
 	// ------------------------------------------------------------------------
 
-	private void installShutdownHook() {
+	protected void installShutdownHook() {
 		if (shutdownHook == null) {
 			this.shutdownHook = ShutdownHookUtil.addShutdownHook(this::dispose, getClass().getSimpleName(), LOG);
 		}

@@ -93,7 +93,7 @@ public class SlotCountExceedingParallelismTest extends TestLogger {
 	// ---------------------------------------------------------------------------------------------
 
 	private void submitJobGraphAndWait(final JobGraph jobGraph) throws JobExecutionException, InterruptedException {
-		MINI_CLUSTER_RESOURCE.getMiniCluster().executeJobBlocking(jobGraph);
+		MINI_CLUSTER_RESOURCE.getMiniCluster().executeJob(jobGraph, false);
 	}
 
 	private JobGraph createTestJobGraph(

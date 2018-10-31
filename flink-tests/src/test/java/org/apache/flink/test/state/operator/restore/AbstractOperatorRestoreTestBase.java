@@ -116,7 +116,7 @@ public abstract class AbstractOperatorRestoreTestBase extends TestLogger {
 
 		assertNotNull(jobToMigrate.getJobID());
 
-		clusterClient.submitJob(jobToMigrate, classLoader);
+		clusterClient.submitJob(jobToMigrate, classLoader, false);
 
 		CompletableFuture<JobStatus> jobRunningFuture = FutureUtils.retrySuccessfulWithDelay(
 			() -> clusterClient.getJobStatus(jobToMigrate.getJobID()),
@@ -171,7 +171,7 @@ public abstract class AbstractOperatorRestoreTestBase extends TestLogger {
 
 		assertNotNull("Job doesn't have a JobID.", jobToRestore.getJobID());
 
-		clusterClient.submitJob(jobToRestore, classLoader);
+		clusterClient.submitJob(jobToRestore, classLoader, false);
 
 		CompletableFuture<JobStatus> jobStatusFuture = FutureUtils.retrySuccessfulWithDelay(
 			() -> clusterClient.getJobStatus(jobToRestore.getJobID()),

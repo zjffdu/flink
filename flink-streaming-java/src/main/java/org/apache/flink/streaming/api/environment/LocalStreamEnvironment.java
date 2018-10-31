@@ -20,11 +20,13 @@ package org.apache.flink.streaming.api.environment;
 import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.streaming.api.graph.StreamGraph;
@@ -33,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.io.IOException;
 
 /**
  * The LocalStreamEnvironment is a StreamExecutionEnvironment that runs the program locally,
@@ -48,6 +51,8 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 	private static final Logger LOG = LoggerFactory.getLogger(LocalStreamEnvironment.class);
 
 	private final Configuration configuration;
+
+	private MiniCluster miniCluster;
 
 	/**
 	 * Creates a new mini cluster stream environment that uses the default configuration.
@@ -84,7 +89,9 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 */
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobSubmissionResult executeInternal(String jobName,
+											   boolean detached,
+											   SavepointRestoreSettings savepointRestoreSettings) throws Exception {
 		// transform the streaming program into a JobGraph
 		StreamGraph streamGraph = getStreamGraph();
 		streamGraph.setJobName(jobName);
@@ -105,26 +112,42 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 
 		int numSlotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS, jobGraph.getMaximumParallelism());
 
-		MiniClusterConfiguration cfg = new MiniClusterConfiguration.Builder()
-			.setConfiguration(configuration)
-			.setNumSlotsPerTaskManager(numSlotsPerTaskManager)
-			.build();
+		if (miniCluster == null) {
+			MiniClusterConfiguration cfg = new MiniClusterConfiguration.Builder()
+					.setConfiguration(configuration)
+					.setNumSlotsPerTaskManager(8)
+					.build();
 
-		if (LOG.isInfoEnabled()) {
-			LOG.info("Running job on local embedded Flink mini cluster");
+			if (LOG.isInfoEnabled()) {
+				LOG.info("Running job on local embedded Flink mini cluster");
+			}
+
+			miniCluster = new MiniCluster(cfg);
+			miniCluster.start();
 		}
 
-		MiniCluster miniCluster = new MiniCluster(cfg);
-
 		try {
-			miniCluster.start();
+
 			configuration.setInteger(RestOptions.PORT, miniCluster.getRestAddress().getPort());
 
-			return miniCluster.executeJobBlocking(jobGraph);
+			return miniCluster.executeJob(jobGraph, detached);
 		}
 		finally {
 			transformations.clear();
-			miniCluster.close();
+			if (!detached) {
+				miniCluster.close();
+			}
 		}
+	}
+
+	@Override
+	public void cancel(String jobId) {
+
+	}
+
+
+	@Override
+	public String triggerSavepoint(String jobId, String path) throws Exception {
+		throw new IOException("not supported");
 	}
 }

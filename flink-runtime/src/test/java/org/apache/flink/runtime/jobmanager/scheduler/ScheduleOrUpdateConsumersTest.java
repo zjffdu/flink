@@ -124,7 +124,7 @@ public class ScheduleOrUpdateConsumersTest extends TestLogger {
 				pipelinedReceiver,
 				blockingReceiver);
 
-		MINI_CLUSTER_RESOURCE.getMiniCluster().executeJobBlocking(jobGraph);
+		MINI_CLUSTER_RESOURCE.getMiniCluster().executeJob(jobGraph, false);
 	}
 
 	// ---------------------------------------------------------------------------------------------

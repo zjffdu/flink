@@ -78,7 +78,7 @@ public class MiniClusterITCase extends TestLogger {
 		try (final MiniCluster miniCluster = new MiniCluster(cfg)) {
 			miniCluster.start();
 
-			miniCluster.executeJobBlocking(getSimpleJob(parallelism));
+			miniCluster.executeJob(getSimpleJob(parallelism), false);
 		}
 	}
 
@@ -96,7 +96,7 @@ public class MiniClusterITCase extends TestLogger {
 		try (final MiniCluster miniCluster = new MiniCluster(cfg)) {
 			miniCluster.start();
 
-			miniCluster.executeJobBlocking(getSimpleJob(parallelism));
+			miniCluster.executeJob(getSimpleJob(parallelism), false);
 		}
 	}
 
@@ -149,7 +149,7 @@ public class MiniClusterITCase extends TestLogger {
 		try (final MiniCluster miniCluster = new MiniCluster(cfg)) {
 			miniCluster.start();
 
-			miniCluster.executeJobBlocking(jobGraph);
+			miniCluster.executeJob(jobGraph, false);
 		}
 	}
 
@@ -179,7 +179,7 @@ public class MiniClusterITCase extends TestLogger {
 
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
-			miniCluster.executeJobBlocking(jobGraph);
+			miniCluster.executeJob(jobGraph, false);
 		}
 	}
 
@@ -209,7 +209,7 @@ public class MiniClusterITCase extends TestLogger {
 
 			final JobGraph jobGraph = new JobGraph("Bipartite Job", sender, receiver);
 
-			miniCluster.executeJobBlocking(jobGraph);
+			miniCluster.executeJob(jobGraph, false);
 		}
 	}
 
@@ -246,7 +246,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Bipartite Job", sender1, receiver, sender2);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {
@@ -288,7 +288,7 @@ public class MiniClusterITCase extends TestLogger {
 
 			final JobGraph jobGraph = new JobGraph("Bipartite Job", sender1, receiver, sender2);
 
-			miniCluster.executeJobBlocking(jobGraph);
+			miniCluster.executeJob(jobGraph, false);
 		}
 	}
 
@@ -331,7 +331,7 @@ public class MiniClusterITCase extends TestLogger {
 
 			jobGraph.setScheduleMode(ScheduleMode.EAGER);
 
-			miniCluster.executeJobBlocking(jobGraph);
+			miniCluster.executeJob(jobGraph, false);
 		}
 	}
 
@@ -362,7 +362,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {
@@ -402,7 +402,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {
@@ -439,7 +439,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {
@@ -476,7 +476,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {
@@ -516,7 +516,7 @@ public class MiniClusterITCase extends TestLogger {
 			final JobGraph jobGraph = new JobGraph("Pointwise Job", sender, receiver);
 
 			try {
-				miniCluster.executeJobBlocking(jobGraph);
+				miniCluster.executeJob(jobGraph, false);
 
 				fail("Job should fail.");
 			} catch (JobExecutionException e) {

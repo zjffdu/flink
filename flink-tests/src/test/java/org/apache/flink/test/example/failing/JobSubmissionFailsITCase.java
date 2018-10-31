@@ -126,7 +126,7 @@ public class JobSubmissionFailsITCase extends TestLogger {
 		client.setDetached(detached);
 
 		try {
-			client.submitJob(jobGraph, JobSubmissionFailsITCase.class.getClassLoader());
+			client.submitJob(jobGraph, JobSubmissionFailsITCase.class.getClassLoader(), detached);
 			fail("Job submission should have thrown an exception.");
 		} catch (Exception e) {
 			if (!failurePredicate.test(e)) {
@@ -135,7 +135,7 @@ public class JobSubmissionFailsITCase extends TestLogger {
 		}
 
 		client.setDetached(false);
-		client.submitJob(getWorkingJobGraph(), JobSubmissionFailsITCase.class.getClassLoader());
+		client.submitJob(getWorkingJobGraph(), JobSubmissionFailsITCase.class.getClassLoader(), false);
 	}
 
 	@Nonnull
