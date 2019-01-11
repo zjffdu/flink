@@ -59,6 +59,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.api.records.QueueInfo;
@@ -198,8 +199,8 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 	}
 
 	public void setLocalJarPath(Path localJarPath) {
-		if (!localJarPath.toString().endsWith("jar")) {
-			throw new IllegalArgumentException("The passed jar path ('" + localJarPath + "') does not end with the 'jar' extension");
+		if (!localJarPath.toString().endsWith("jar") && !localJarPath.toString().endsWith("zip")) {
+			throw new IllegalArgumentException("The passed jar path ('" + localJarPath + "') does not end with the 'jar' or 'zip' extension");
 		}
 		this.flinkJarPath = localJarPath;
 	}
@@ -838,15 +839,29 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			}
 		}
 
+		Path remotePathJar = null;
 		// Setup jar for ApplicationMaster
-		Path remotePathJar = setupSingleLocalResource(
-			"flink.jar",
-			fs,
-			appId,
-			flinkJarPath,
-			localResources,
-			homeDir,
-			"");
+		if (flinkJarPath.getName().endsWith(".zip")) {
+			remotePathJar = setupSingleLocalResource(
+				"flink.zip",
+				fs,
+				appId,
+				flinkJarPath,
+				LocalResourceType.ARCHIVE,
+				localResources,
+				homeDir,
+				"");
+		} else {
+			remotePathJar = setupSingleLocalResource(
+				"flink.jar",
+				fs,
+				appId,
+				flinkJarPath,
+				LocalResourceType.FILE,
+				localResources,
+				homeDir,
+				"");
+		}
 
 		// set the right configuration values for the TaskManager
 		configuration.setInteger(
@@ -868,12 +883,14 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			fs,
 			appId,
 			new Path(tmpConfigurationFile.getAbsolutePath()),
+			LocalResourceType.FILE,
 			localResources,
 			homeDir,
 			"");
 
 		paths.add(remotePathJar);
-		classPathBuilder.append("flink.jar").append(File.pathSeparator);
+		classPathBuilder.append(flinkJarPath.getName().endsWith("zip") ? "flink.zip/*" : "flink.jar")
+			.append(File.pathSeparator);
 		paths.add(remotePathConf);
 		classPathBuilder.append("flink-conf.yaml").append(File.pathSeparator);
 
@@ -896,6 +913,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 					fs,
 					appId,
 					new Path(fp.toURI()),
+					LocalResourceType.FILE,
 					localResources,
 					homeDir,
 					"");
@@ -929,6 +947,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 					fs,
 					appId,
 					krb5ConfPath,
+					LocalResourceType.FILE,
 					localResources,
 					homeDir,
 					"");
@@ -941,6 +960,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 					fs,
 					appId,
 					yarnSitePath,
+					LocalResourceType.FILE,
 					localResources,
 					homeDir,
 					"");
@@ -958,6 +978,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 				fs,
 				appId,
 				new Path(keytab),
+				LocalResourceType.FILE,
 				localResources,
 				homeDir,
 				"");
@@ -1129,6 +1150,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			FileSystem fs,
 			ApplicationId appId,
 			Path localSrcPath,
+			LocalResourceType resourceType,
 			Map<String, LocalResource> localResources,
 			Path targetHomeDir,
 			String relativeTargetPath) throws IOException, URISyntaxException {
@@ -1137,6 +1159,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			fs,
 			appId.toString(),
 			localSrcPath,
+			resourceType,
 			targetHomeDir,
 			relativeTargetPath);
 
@@ -1199,6 +1222,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 									fs,
 									appId,
 									new Path(file.toUri()),
+									LocalResourceType.FILE,
 									localResources,
 									targetHomeDir,
 									relativePath.getParent().toString());
@@ -1221,7 +1245,7 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 					Path shipLocalPath = new Path(shipFile.toURI());
 					String key = shipFile.getName();
 					Path remotePath = setupSingleLocalResource(
-						key, fs, appId, shipLocalPath, localResources, targetHomeDir, "");
+						key, fs, appId, shipLocalPath, LocalResourceType.FILE, localResources, targetHomeDir, "");
 					remotePaths.add(remotePath);
 					envShipFileList.append(key).append("=").append(remotePath).append(",");
 

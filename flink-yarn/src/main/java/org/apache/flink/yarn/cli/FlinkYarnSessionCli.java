@@ -44,6 +44,8 @@ import org.apache.flink.yarn.AbstractYarnClusterDescriptor;
 import org.apache.flink.yarn.YarnClusterDescriptor;
 import org.apache.flink.yarn.configuration.YarnConfigOptions;
 
+import org.apache.flink.shaded.guava18.com.google.common.io.Files;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
@@ -66,6 +68,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -84,6 +87,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.apache.flink.client.cli.CliFrontendParser.DETACHED_OPTION;
 import static org.apache.flink.client.cli.CliFrontendParser.SHUTDOWN_IF_ATTACHED_OPTION;
@@ -283,6 +288,34 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine<ApplicationId
 				userPath = "file://" + userPath;
 			}
 			localJarPath = new Path(userPath);
+		} else if (System.getenv().containsKey("FLINK_DEV_JAR_DIR")) {
+			try {
+				File jarsArchive = File.createTempFile("flink", ".zip");
+				localJarPath = new Path(jarsArchive.getAbsolutePath());
+				File jarsDir = new File(System.getenv("FLINK_DEV_JAR_DIR"));
+				LOG.info("FLINK_DEV_JAR_DIR is set. Build flink-dist jar: " +
+					jarsArchive.getAbsolutePath() + " from: " + jarsDir.getAbsolutePath());
+				ZipOutputStream jarsStream = new ZipOutputStream(new FileOutputStream(jarsArchive));
+
+				try {
+					jarsStream.setLevel(0);
+					File[] jars = jarsDir.listFiles(new FilenameFilter() {
+						@Override
+						public boolean accept(File dir, String name) {
+							return name.endsWith(".jar");
+						}
+					});
+					for (File jar : jars) {
+						jarsStream.putNextEntry(new ZipEntry(jar.getName()));
+						Files.copy(jar, jarsStream);
+						jarsStream.closeEntry();
+					}
+				} finally {
+					jarsStream.close();
+				}
+			} catch (IOException e) {
+				throw new RuntimeException("Fail to create flink-dist jar", e);
+			}
 		} else {
 			LOG.info("No path for the flink jar passed. Using the location of "
 				+ yarnClusterDescriptor.getClass() + " to locate the jar");

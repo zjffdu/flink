@@ -58,6 +58,10 @@ opt=`cd "$opt"/../opt; pwd`
 FLINK_TABLE_LIB_PATH=$opt/`ls $opt|grep flink-table_*`
 FLINK_CLASSPATH=$FLINK_CLASSPATH:$FLINK_TABLE_LIB_PATH
 
+if [[ -n "$FLINK_DEV_LIB_DIR" ]];
+then
+    FLINK_CLASSPATH=$FLINK_DEV_LIB_DIR/*:$FLINK_CLASSPATH
+fi
 
 # https://issues.scala-lang.org/browse/SI-6502, cant load external jars interactively
 # in scala shell since 2.10, has to be done at startup
@@ -69,7 +73,7 @@ do
     if [[  ${!i} = "-a" || ${!i} = "--addclasspath" ]]
     then
 	EXTERNAL_LIB_FOUND=true
-	
+
         #adding to classpath
         k=$((i+1))
         j=$((k+1))

@@ -139,6 +139,7 @@ public final class Utils {
 		FileSystem fs,
 		String appId,
 		Path localSrcPath,
+		LocalResourceType resourceType,
 		Path homedir,
 		String relativeTargetPath) throws IOException {
 
@@ -168,7 +169,8 @@ public final class Utils {
 		//       the values we provide to #registerLocalResource() below.
 		fs.setTimes(dst, localFile.lastModified(), -1);
 		// now create the resource instance
-		LocalResource resource = registerLocalResource(dst, localFile.length(), localFile.lastModified());
+		LocalResource resource = registerLocalResource(dst, resourceType, localFile.length(),
+			localFile.lastModified());
 
 		return Tuple2.of(dst, resource);
 	}
@@ -207,24 +209,25 @@ public final class Utils {
 	 */
 	private static LocalResource registerLocalResource(
 			Path remoteRsrcPath,
+			LocalResourceType resourceType,
 			long resourceSize,
 			long resourceModificationTime) {
 		LocalResource localResource = Records.newRecord(LocalResource.class);
 		localResource.setResource(ConverterUtils.getYarnUrlFromURI(remoteRsrcPath.toUri()));
 		localResource.setSize(resourceSize);
 		localResource.setTimestamp(resourceModificationTime);
-		localResource.setType(LocalResourceType.FILE);
+		localResource.setType(resourceType);
 		localResource.setVisibility(LocalResourceVisibility.APPLICATION);
 		return localResource;
 	}
 
-	private static LocalResource registerLocalResource(FileSystem fs, Path remoteRsrcPath) throws IOException {
+	private static LocalResource registerLocalResource(FileSystem fs, Path remoteRsrcPath, LocalResourceType resourceType) throws IOException {
 		LocalResource localResource = Records.newRecord(LocalResource.class);
 		FileStatus jarStat = fs.getFileStatus(remoteRsrcPath);
 		localResource.setResource(ConverterUtils.getYarnUrlFromURI(remoteRsrcPath.toUri()));
 		localResource.setSize(jarStat.getLen());
 		localResource.setTimestamp(jarStat.getModificationTime());
-		localResource.setType(LocalResourceType.FILE);
+		localResource.setType(resourceType);
 		localResource.setVisibility(LocalResourceVisibility.APPLICATION);
 		return localResource;
 	}
@@ -425,7 +428,7 @@ public final class Utils {
 			log.info("Adding keytab {} to the AM container local resource bucket", remoteKeytabPath);
 			Path keytabPath = new Path(remoteKeytabPath);
 			FileSystem fs = keytabPath.getFileSystem(yarnConfig);
-			keytabResource = registerLocalResource(fs, keytabPath);
+			keytabResource = registerLocalResource(fs, keytabPath, LocalResourceType.FILE);
 		}
 
 		//To support Yarn Secure Integration Test Scenario
@@ -436,12 +439,12 @@ public final class Utils {
 			log.info("TM:Adding remoteYarnConfPath {} to the container local resource bucket", remoteYarnConfPath);
 			Path yarnConfPath = new Path(remoteYarnConfPath);
 			FileSystem fs = yarnConfPath.getFileSystem(yarnConfig);
-			yarnConfResource = registerLocalResource(fs, yarnConfPath);
+			yarnConfResource = registerLocalResource(fs, yarnConfPath, LocalResourceType.FILE);
 
 			log.info("TM:Adding remoteKrb5Path {} to the container local resource bucket", remoteKrb5Path);
 			Path krb5ConfPath = new Path(remoteKrb5Path);
 			fs = krb5ConfPath.getFileSystem(yarnConfig);
-			krb5ConfResource = registerLocalResource(fs, krb5ConfPath);
+			krb5ConfResource = registerLocalResource(fs, krb5ConfPath, LocalResourceType.FILE);
 
 			hasKrb5 = true;
 		}
@@ -451,7 +454,7 @@ public final class Utils {
 		{
 			Path remoteJarPath = new Path(remoteFlinkJarPath);
 			FileSystem fs = remoteJarPath.getFileSystem(yarnConfig);
-			flinkJar = registerLocalResource(fs, remoteJarPath);
+			flinkJar = registerLocalResource(fs, remoteJarPath, remoteFlinkJarPath.endsWith(".zip") ? LocalResourceType.ARCHIVE : LocalResourceType.FILE);
 		}
 
 		// register conf with local fs
@@ -471,6 +474,7 @@ public final class Utils {
 					fs,
 					appId,
 					new Path(taskManagerConfigFile.toURI()),
+					LocalResourceType.FILE,
 					homeDirPath,
 					"").f1;
 
@@ -486,7 +490,7 @@ public final class Utils {
 		}
 
 		Map<String, LocalResource> taskManagerLocalResources = new HashMap<>();
-		taskManagerLocalResources.put("flink.jar", flinkJar);
+		taskManagerLocalResources.put(remoteFlinkJarPath.endsWith(".zip") ? "flink.zip" : "flink.jar", flinkJar);
 		taskManagerLocalResources.put("flink-conf.yaml", flinkConf);
 
 		//To support Yarn Secure Integration Test Scenario
@@ -505,7 +509,7 @@ public final class Utils {
 				String[] keyAndPath = pathStr.split("=");
 				require(keyAndPath.length == 2, "Invalid entry in ship file list: %s", pathStr);
 				Path path = new Path(keyAndPath[1]);
-				LocalResource resource = registerLocalResource(path.getFileSystem(yarnConfig), path);
+				LocalResource resource = registerLocalResource(path.getFileSystem(yarnConfig), path, LocalResourceType.FILE);
 				taskManagerLocalResources.put(keyAndPath[0], resource);
 			}
 		}
