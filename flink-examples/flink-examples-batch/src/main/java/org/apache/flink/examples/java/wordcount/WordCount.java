@@ -21,6 +21,8 @@ package org.apache.flink.examples.java.wordcount;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.LocalEnvironment;
+import org.apache.flink.api.java.LocalEnvironment2;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.examples.java.wordcount.util.WordCountData;
@@ -54,9 +56,9 @@ public class WordCount {
 		final ParameterTool params = ParameterTool.fromArgs(args);
 
 		// set up the execution environment
-		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		final ExecutionEnvironment env = new LocalEnvironment2();
 
-		// make parameters available in the web interface
+		// make parameters available in the web interfaceWo
 		env.getConfig().setGlobalJobParameters(params);
 
 		// get input data

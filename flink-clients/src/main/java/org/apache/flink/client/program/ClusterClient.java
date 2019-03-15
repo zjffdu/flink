@@ -102,7 +102,7 @@ public abstract class ClusterClient<T> {
 	final Optimizer compiler;
 
 	/** The actor system used to communicate with the JobManager. */
-	protected final ActorSystemLoader actorSystemLoader;
+	protected ActorSystemLoader actorSystemLoader;
 
 	/** Configuration of the client. */
 	protected final Configuration flinkConfig;
@@ -114,9 +114,9 @@ public abstract class ClusterClient<T> {
 	private final FiniteDuration lookupTimeout;
 
 	/** Service factory for high available. */
-	protected final HighAvailabilityServices highAvailabilityServices;
+	protected HighAvailabilityServices highAvailabilityServices;
 
-	private final boolean sharedHaServices;
+	private boolean sharedHaServices;
 
 	/** Flag indicating whether to sysout print execution updates. */
 	private boolean printStatusDuringExecution = true;
@@ -178,14 +178,16 @@ public abstract class ClusterClient<T> {
 		this.timeout = AkkaUtils.getClientTimeout(flinkConfig);
 		this.lookupTimeout = AkkaUtils.getLookupTimeout(flinkConfig);
 
-		this.actorSystemLoader = new LazyActorSystemLoader(
-			highAvailabilityServices,
-			Time.milliseconds(lookupTimeout.toMillis()),
-			flinkConfig,
-			log);
+		if (!isLocal()) {
+			this.actorSystemLoader = new LazyActorSystemLoader(
+				highAvailabilityServices,
+				Time.milliseconds(lookupTimeout.toMillis()),
+				flinkConfig,
+				log);
 
-		this.highAvailabilityServices = Preconditions.checkNotNull(highAvailabilityServices);
-		this.sharedHaServices = sharedHaServices;
+			this.highAvailabilityServices = Preconditions.checkNotNull(highAvailabilityServices);
+			this.sharedHaServices = sharedHaServices;
+		}
 	}
 
 	public ClusterClient(
@@ -199,10 +201,16 @@ public abstract class ClusterClient<T> {
 		this.timeout = AkkaUtils.getClientTimeout(flinkConfig);
 		this.lookupTimeout = AkkaUtils.getLookupTimeout(flinkConfig);
 
-		this.actorSystemLoader = Preconditions.checkNotNull(actorSystemLoader);
+		if (!isLocal()) {
+			this.actorSystemLoader = Preconditions.checkNotNull(actorSystemLoader);
 
-		this.highAvailabilityServices = Preconditions.checkNotNull(highAvailabilityServices);
-		this.sharedHaServices = sharedHaServices;
+			this.highAvailabilityServices = Preconditions.checkNotNull(highAvailabilityServices);
+			this.sharedHaServices = sharedHaServices;
+		}
+	}
+
+	private boolean isLocal() {
+		return flinkConfig.getString("execution.mode", "remote").equalsIgnoreCase("local");
 	}
 
 	// ------------------------------------------------------------------------

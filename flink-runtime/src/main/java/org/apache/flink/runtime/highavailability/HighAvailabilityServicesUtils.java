@@ -80,6 +80,9 @@ public class HighAvailabilityServicesUtils {
 		Executor executor,
 		AddressResolution addressResolution) throws Exception {
 
+		if (configuration.getString("execution.mode", "local").equalsIgnoreCase("local")) {
+			return null;
+		}
 		HighAvailabilityMode highAvailabilityMode = LeaderRetrievalUtils.getRecoveryMode(configuration);
 
 		switch (highAvailabilityMode) {

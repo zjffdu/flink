@@ -72,6 +72,7 @@ public class LocalEnvironment extends ExecutionEnvironment {
 							"(such as Command Line Client, Scala Shell, or TestEnvironment)");
 		}
 		this.configuration = config == null ? new Configuration() : config;
+		this.configuration.setString("execution.mode", "local");
 	}
 
 	// --------------------------------------------------------------------------------------------
@@ -83,13 +84,7 @@ public class LocalEnvironment extends ExecutionEnvironment {
 		}
 
 		Plan p = createProgramPlan(jobName);
-
-		// Session management is disabled, revert this commit to enable
-		//p.setJobId(jobID);
-		//p.setSessionTimeout(sessionTimeout);
-
 		JobExecutionResult result = executor.executePlan(p);
-
 		this.lastJobExecutionResult = result;
 		return result;
 	}
@@ -124,12 +119,11 @@ public class LocalEnvironment extends ExecutionEnvironment {
 		executor.setPrintStatusDuringExecution(getConfig().isSysoutLoggingEnabled());
 
 		// if we have a session, start the mini cluster eagerly to have it available across sessions
-		if (getSessionTimeout() > 0) {
+//		if (getSessionTimeout() > 0) {
 			executor.start();
-
 			// also install the reaper that will shut it down eventually
 			executorReaper = new ExecutorReaper(executor);
-		}
+//		}
 	}
 
 	// ------------------------------------------------------------------------
