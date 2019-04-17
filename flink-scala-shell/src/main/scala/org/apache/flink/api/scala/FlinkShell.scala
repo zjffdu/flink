@@ -193,6 +193,8 @@ object FlinkShell {
 
     val configDirectory = new File(confDirPath)
     val configuration = GlobalConfiguration.loadConfiguration(configDirectory.getAbsolutePath)
+    configuration.setString("yarn.jars",
+      config.externalJars.getOrElse(Array.empty[String]).mkString(","))
 
     val (repl, cluster) = try {
       val (host, port, cluster) = fetchConnectionInfo(configuration, config)

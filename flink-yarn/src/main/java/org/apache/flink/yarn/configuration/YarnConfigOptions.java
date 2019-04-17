@@ -148,6 +148,14 @@ public class YarnConfigOptions {
 		.defaultValue("")
 		.withDescription("A comma-separated list of tags to apply to the Flink YARN application.");
 
+	/**
+	 * A comma-separated list of user jars to be shipped to yarn containers.
+	 */
+	public static final ConfigOption<String> FLINK_JARS =
+		key("yarn.jars")
+			.defaultValue("")
+			.withDescription("A comma-separated list of user jars to be shipped to yarn containers.");
+
 	// ------------------------------------------------------------------------
 
 	/** This class is not meant to be instantiated. */

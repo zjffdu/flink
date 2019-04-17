@@ -47,6 +47,7 @@ import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.ShutdownHookUtil;
 import org.apache.flink.yarn.configuration.YarnConfigOptions;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsAction;
@@ -741,6 +742,13 @@ public abstract class AbstractYarnClusterDescriptor implements ClusterDescriptor
 			// add the user code jars from the provided JobGraph
 			for (org.apache.flink.core.fs.Path path : jobGraph.getUserJars()) {
 				userJarFiles.add(new File(path.toUri()));
+			}
+		}
+
+		String userJars = configuration.getString(YarnConfigOptions.FLINK_JARS);
+		if (!StringUtils.isBlank(userJars)) {
+			for (String jar : userJars.split(",")) {
+				userJarFiles.add(new File(jar));
 			}
 		}
 
