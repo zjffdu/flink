@@ -153,7 +153,7 @@ class FlinkILoop(
   )
 
   override def createInterpreter(): Unit = {
-    super.createInterpreter()
+    intp = new FlinkILoopInterpreter(settings, out)
 
     intp.beQuietDuring {
       // import dependencies

@@ -61,11 +61,6 @@ object UserDefinedFunctionUtils {
         s"Function class ${clazz.getCanonicalName} is no proper class," +
             " it is either abstract, an interface, or a primitive type.")
     }
-    else if (InstantiationUtil.isNonStaticInnerClass(clazz)) {
-      throw new ValidationException(
-        s"The class ${clazz.getCanonicalName} is an inner class, but" +
-            " not statically accessible.")
-    }
   }
 
   /**

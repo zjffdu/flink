@@ -19,6 +19,7 @@
 package org.apache.flink.api.scala
 
 import java.io._
+import java.nio.file.Files
 
 import org.apache.flink.client.cli.{CliFrontend, CliFrontendParser}
 import org.apache.flink.client.deployment.ClusterDescriptor
@@ -221,6 +222,14 @@ object FlinkShell {
     val settings = new Settings()
     settings.usejavacp.value = true
     settings.Yreplsync.value = true
+    settings.classpath.value = ""
+
+    val outputDir = Files.createTempDirectory("flink-repl");
+    val interpArguments = List(
+      "-Yrepl-class-based",
+      "-Yrepl-outdir", s"${outputDir.toFile.getAbsolutePath}"
+    )
+    settings.processArguments(interpArguments, true)
 
     try {
       repl.process(settings)
