@@ -18,6 +18,7 @@
 
 package org.apache.flink.client.program;
 
+import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.configuration.Configuration;
@@ -93,6 +94,30 @@ public class MiniClusterClient extends ClusterClient<MiniClusterClient.MiniClust
 			} catch (IOException | ClassNotFoundException e) {
 				throw new ProgramInvocationException("Job failed", jobGraph.getJobID(), e);
 			}
+		}
+	}
+
+	@Override
+	public JobExecutionResult executeJob(JobGraph jobGraph, ClassLoader classLoader) throws ProgramInvocationException {
+		final CompletableFuture<JobSubmissionResult> jobSubmissionResultFuture = submitJob(jobGraph);
+		final CompletableFuture<JobResult> jobResultFuture = jobSubmissionResultFuture.thenCompose(
+			(JobSubmissionResult ignored) -> requestJobResult(jobGraph.getJobID()));
+
+		final JobResult jobResult;
+		try {
+			jobResult = jobResultFuture.get();
+		} catch (InterruptedException | ExecutionException e) {
+			ExceptionUtils.checkInterrupted(e);
+
+			throw new ProgramInvocationException("Could not run job", jobGraph.getJobID(), e);
+		}
+
+		try {
+			return jobResult.toJobExecutionResult(classLoader);
+		} catch (JobExecutionException e) {
+			throw new ProgramInvocationException("Job failed", jobGraph.getJobID(), e);
+		} catch (IOException | ClassNotFoundException e) {
+			throw new ProgramInvocationException("Job failed", jobGraph.getJobID(), e);
 		}
 	}
 
