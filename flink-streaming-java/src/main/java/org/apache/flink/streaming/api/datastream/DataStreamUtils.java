@@ -59,8 +59,8 @@ public final class DataStreamUtils {
 		InetAddress clientAddress;
 
 		if (env instanceof RemoteStreamEnvironment) {
-			String host = ((RemoteStreamEnvironment) env).getHost();
-			int port = ((RemoteStreamEnvironment) env).getPort();
+			String host ="localhost"; //((RemoteStreamEnvironment) env).getHost();
+			int port = 0; //((RemoteStreamEnvironment) env).getPort();
 			try {
 				clientAddress = ConnectionUtils.findConnectingAddress(new InetSocketAddress(host, port), 2000, 400);
 			}

@@ -768,8 +768,11 @@ under the License.
 							<version>3.1.1</version>
 						</plugin>
 						<plugin>
-							<groupId>com.github.siom79.japicmp</groupId>
+							<groupId>c</groupId>
 							<artifactId>japicmp-maven-plugin</artifactId>
+							<configuration>
+								<skip>true</skip>
+							</configuration>
 							<dependencies>
 								<dependency>
 									<groupId>javax.xml.bind</groupId>
@@ -1633,6 +1636,7 @@ under the License.
 						<configLocation>/tools/maven/checkstyle.xml</configLocation>
 						<logViolationsToConsole>true</logViolationsToConsole>
 						<failOnViolation>true</failOnViolation>
+						<skip>true</skip>
 					</configuration>
 				</plugin>
 
@@ -1782,6 +1786,7 @@ under the License.
 					<artifactId>japicmp-maven-plugin</artifactId>
 					<version>0.11.0</version>
 					<configuration>
+						<skip>true</skip>
 						<oldVersion>
 							<dependency>
 								<groupId>org.apache.flink</groupId>

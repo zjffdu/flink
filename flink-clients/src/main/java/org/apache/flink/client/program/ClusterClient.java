@@ -41,6 +41,7 @@ import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
+import org.apache.flink.runtime.jobmaster.JobResult;
 import org.apache.flink.runtime.leaderretrieval.LeaderRetrievalException;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.util.LeaderConnectionInfo;
@@ -52,6 +53,7 @@ import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.net.URISyntaxException;
@@ -65,6 +67,8 @@ import scala.concurrent.duration.FiniteDuration;
 
 /**
  * Encapsulates the functionality necessary to submit a program to a remote cluster.
+ * One ClusterClient represent one session. If you want to create a new session,
+ * you need to create a new ClusterClient.
  *
  * @param <T> type of the cluster id
  */
@@ -507,6 +511,22 @@ public abstract class ClusterClient<T> {
 	 */
 	public abstract JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader)
 		throws ProgramInvocationException;
+
+	/**
+	 * Submit the given {@link JobGraph} to the cluster.
+	 *
+	 * @param jobGraph to submit
+	 * @return Future which is completed with the {@link JobSubmissionResult}
+	 */
+	public abstract CompletableFuture<JobSubmissionResult> submitJob(@Nonnull JobGraph jobGraph);
+
+	/**
+	 * Request the {@link JobResult} for the given {@link JobID}.
+	 *
+	 * @param jobId for which to request the {@link JobResult}
+	 * @return Future which is completed with the {@link JobResult}
+	 */
+	public abstract CompletableFuture<JobResult> requestJobResult(@Nonnull JobID jobId);
 
 	public abstract void shutDownCluster();
 }

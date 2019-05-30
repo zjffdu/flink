@@ -20,11 +20,12 @@ package org.apache.flink.api.scala
 
 import java.io._
 
+import org.apache.flink.api.scala.FlinkShell.{deployNewYarnCluster, fetchDeployedYarnClusterInfo}
 import org.apache.flink.client.cli.{CliFrontend, CliFrontendParser}
 import org.apache.flink.client.deployment.ClusterDescriptor
 import org.apache.flink.client.program.rest.RestClusterClient
 import org.apache.flink.client.program.{ClusterClient, MiniClusterClient}
-import org.apache.flink.configuration.{Configuration, GlobalConfiguration, JobManagerOptions}
+import org.apache.flink.configuration.{Configuration, GlobalConfiguration, JobManagerOptions, RestOptions}
 import org.apache.flink.runtime.akka.AkkaUtils
 import org.apache.flink.runtime.minicluster.{MiniCluster, MiniClusterConfiguration}
 
@@ -201,12 +202,30 @@ object FlinkShell {
     val configuration = GlobalConfiguration.loadConfiguration(configDirectory.getAbsolutePath)
 
     try {
-      val (host, port, shouldShutdownCluster, clusterClient) =
-        fetchConnectionInfo(configuration, config)
-      val conf = clusterClient.getFlinkConfiguration
-      println(s"\nConnecting to Flink cluster (host: $host, port: $port).\n")
-      new FlinkILoop(host, port, conf, config.externalJars, clusterClient, shouldShutdownCluster,
-        in, new JPrintWriter(out))
+      config.executionMode match {
+        case ExecutionMode.LOCAL => // Local mode
+
+        case ExecutionMode.REMOTE => // Remote mode
+          if (config.host.isEmpty || config.port.isEmpty) {
+            throw new IllegalArgumentException("<host> or <port> is not specified!")
+          }
+          configuration.setString(JobManagerOptions.ADDRESS, config.host.get)
+          configuration.setInteger(JobManagerOptions.PORT, config.port.get)
+          configuration.setInteger(RestOptions.PORT, config.port.get)
+
+        case ExecutionMode.YARN => // YARN mode
+
+        case ExecutionMode.UNDEFINED => // Wrong input
+          throw new IllegalArgumentException("please specify execution mode:\n" +
+            "[local | remote <host> <port> | yarn]")
+      }
+      configuration.setString("flink.execution.mode", config.executionMode.toString)
+      // if (config.executionMode ==)
+      //      val (host, port, shouldShutdownCluster, clusterClient) =
+      //        fetchConnectionInfo(configuration, config)
+      // val conf = clusterClient.getFlinkConfiguration
+      // println(s"\nConnecting to Flink cluster (host: $host, port: $port).\n")
+      new FlinkILoop(configuration, config.externalJars, in, new JPrintWriter(out))
     } catch {
       case e: IllegalArgumentException =>
         println(s"Error: ${e.getMessage}")

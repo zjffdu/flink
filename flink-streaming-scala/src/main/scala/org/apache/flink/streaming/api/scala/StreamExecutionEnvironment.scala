@@ -832,7 +832,7 @@ object StreamExecutionEnvironment {
    */
   def createRemoteEnvironment(host: String, port: Int, jarFiles: String*):
   StreamExecutionEnvironment = {
-    new StreamExecutionEnvironment(JavaEnv.createRemoteEnvironment(host, port, jarFiles: _*))
+    new StreamExecutionEnvironment(JavaEnv.createRemoteEnvironment(jarFiles: _*))
   }
 
   /**
@@ -856,7 +856,7 @@ object StreamExecutionEnvironment {
       parallelism: Int,
       jarFiles: String*): StreamExecutionEnvironment = {
 
-    val javaEnv = JavaEnv.createRemoteEnvironment(host, port, jarFiles: _*)
+    val javaEnv = JavaEnv.createRemoteEnvironment(jarFiles: _*)
     javaEnv.setParallelism(parallelism)
     new StreamExecutionEnvironment(javaEnv)
   }

@@ -19,8 +19,9 @@
 package org.apache.flink.table.utils
 
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.java.{LocalEnvironment, DataSet => JDataSet}
+import org.apache.flink.api.java.{DataSet => JDataSet}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment}
+import org.apache.flink.client.LocalEnvironment
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.environment.LocalStreamEnvironment
 import org.apache.flink.streaming.api.functions.source.SourceFunction

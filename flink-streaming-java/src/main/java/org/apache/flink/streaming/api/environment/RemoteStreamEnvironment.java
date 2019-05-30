@@ -23,6 +23,9 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.client.ClusterClientProvider;
+import org.apache.flink.client.ClusterClientProviderFactory;
+import org.apache.flink.client.PlanExecutor;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.JobWithJars;
 import org.apache.flink.client.program.ProgramInvocationException;
@@ -53,11 +56,13 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RemoteStreamEnvironment.class);
 
-	/** The hostname of the JobManager. */
-	private final String host;
+	//	/** The hostname of the JobManager. */
+	//	private final String host;
+	//
+	//	/** The port of the JobManager main actor system. */
+	//	private final int port;
 
-	/** The port of the JobManager main actor system. */
-	private final int port;
+	private PlanExecutor planExecutor;
 
 	/** The configuration used to parametrize the client that connects to the remote cluster. */
 	private final Configuration clientConfiguration;
@@ -87,8 +92,8 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 *            user-defined input formats, or any libraries, those must be
 	 *            provided in the JAR files.
 	 */
-	public RemoteStreamEnvironment(String host, int port, String... jarFiles) {
-		this(host, port, null, jarFiles);
+	public RemoteStreamEnvironment(String... jarFiles) {
+		this(null, jarFiles);
 	}
 
 	/**
@@ -110,8 +115,8 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 *            user-defined input formats, or any libraries, those must be
 	 *            provided in the JAR files.
 	 */
-	public RemoteStreamEnvironment(String host, int port, Configuration clientConfiguration, String... jarFiles) {
-		this(host, port, clientConfiguration, jarFiles, null);
+	public RemoteStreamEnvironment(Configuration clientConfiguration, String... jarFiles) {
+		this(clientConfiguration, jarFiles, null);
 	}
 
 	/**
@@ -138,8 +143,8 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 *            protocol (e.g. file://) and be accessible on all nodes (e.g. by means of a NFS share).
 	 *            The protocol must be supported by the {@link java.net.URLClassLoader}.
 	 */
-	public RemoteStreamEnvironment(String host, int port, Configuration clientConfiguration, String[] jarFiles, URL[] globalClasspaths) {
-		this(host, port, clientConfiguration, jarFiles, null, null);
+	public RemoteStreamEnvironment(Configuration clientConfiguration, String[] jarFiles, URL[] globalClasspaths) {
+		this(clientConfiguration, jarFiles, null, null);
 	}
 
 	/**
@@ -169,22 +174,22 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 *            Optional savepoint restore settings for job execution.
 	 */
 	@PublicEvolving
-	public RemoteStreamEnvironment(String host, int port, Configuration clientConfiguration, String[] jarFiles, URL[] globalClasspaths, SavepointRestoreSettings savepointRestoreSettings) {
+	public RemoteStreamEnvironment(Configuration clientConfiguration, String[] jarFiles, URL[] globalClasspaths, SavepointRestoreSettings savepointRestoreSettings) {
 		if (!ExecutionEnvironment.areExplicitEnvironmentsAllowed()) {
 			throw new InvalidProgramException(
 					"The RemoteEnvironment cannot be used when submitting a program through a client, " +
 							"or running in a TestEnvironment context.");
 		}
 
-		if (host == null) {
-			throw new NullPointerException("Host must not be null.");
-		}
-		if (port < 1 || port >= 0xffff) {
-			throw new IllegalArgumentException("Port out of range");
-		}
-
-		this.host = host;
-		this.port = port;
+//		if (host == null) {
+//			throw new NullPointerException("Host must not be null.");
+//		}
+//		if (port < 1 || port >= 0xffff) {
+//			throw new IllegalArgumentException("Port out of range");
+//		}
+//
+//		this.host = host;
+//		this.port = port;
 		this.clientConfiguration = clientConfiguration == null ? new Configuration() : clientConfiguration;
 		this.jarFiles = new ArrayList<>(jarFiles.length);
 		for (String jarFile : jarFiles) {
@@ -205,6 +210,7 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 			this.globalClasspaths = Arrays.asList(globalClasspaths);
 		}
 		this.savepointRestoreSettings = savepointRestoreSettings;
+		this.clusterClientProvider = ClusterClientProviderFactory.getClusterClientProvider(clientConfiguration);
 	}
 
 	/**
@@ -224,12 +230,11 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 		SavepointRestoreSettings savepointRestoreSettings
 	) throws ProgramInvocationException {
 		StreamGraph streamGraph = streamExecutionEnvironment.getStreamGraph(jobName);
-		return executeRemotely(streamGraph,
+		streamGraph.setJobName(jobName);
+		return executeRemotely(streamExecutionEnvironment.getClusterClientProvider(), streamGraph,
 			streamExecutionEnvironment.getClass().getClassLoader(),
 			streamExecutionEnvironment.getConfig(),
 			jarFiles,
-			host,
-			port,
 			clientConfiguration,
 			globalClasspaths,
 			savepointRestoreSettings);
@@ -241,47 +246,37 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 * <p>Method for internal use since it exposes stream graph and other implementation details that are subject to change.
 	 * @throws ProgramInvocationException
 	 */
-	private static JobExecutionResult executeRemotely(StreamGraph streamGraph,
+	private static JobExecutionResult executeRemotely(
+		ClusterClientProvider clusterClientProvider,
+		StreamGraph streamGraph,
 		ClassLoader envClassLoader,
 		ExecutionConfig executionConfig,
 		List<URL> jarFiles,
-		String host,
-		int port,
 		Configuration clientConfiguration,
 		List<URL> globalClasspaths,
 		SavepointRestoreSettings savepointRestoreSettings
 	) throws ProgramInvocationException {
 		if (LOG.isInfoEnabled()) {
-			LOG.info("Running remotely at {}:{}", host, port);
+			LOG.info("Running remotely at {}:{}");
 		}
 
 		ClassLoader userCodeClassLoader = JobWithJars.buildUserCodeClassLoader(jarFiles, globalClasspaths, envClassLoader);
 
-		Configuration configuration = new Configuration();
-		configuration.addAll(clientConfiguration);
-
-		configuration.setString(JobManagerOptions.ADDRESS, host);
-		configuration.setInteger(JobManagerOptions.PORT, port);
-
-		configuration.setInteger(RestOptions.PORT, port);
-
-		final ClusterClient<?> client;
+		//		configuration.setString(JobManagerOptions.ADDRESS, host);
+		//		configuration.setInteger(JobManagerOptions.PORT, port);
+		//
+		//		configuration.setInteger(RestOptions.PORT, port);
+		ClusterClient clusterClient = null;
 		try {
-			client = new RestClusterClient<>(configuration, "RemoteStreamEnvironment");
-		}
-		catch (Exception e) {
-			throw new ProgramInvocationException("Cannot establish connection to JobManager: " + e.getMessage(),
-				streamGraph.getJobGraph().getJobID(), e);
-		}
+			PlanExecutor planExecutor = new PlanExecutor(clientConfiguration, clusterClientProvider);
+			planExecutor.start();
+			clusterClient = planExecutor.getClusterClient();
+			clusterClient.setPrintStatusDuringExecution(executionConfig.isSysoutLoggingEnabled());
 
-		client.setPrintStatusDuringExecution(executionConfig.isSysoutLoggingEnabled());
-
-		if (savepointRestoreSettings == null) {
-			savepointRestoreSettings = SavepointRestoreSettings.none();
-		}
-
-		try {
-			return client.run(streamGraph, jarFiles, globalClasspaths, userCodeClassLoader, savepointRestoreSettings)
+			if (savepointRestoreSettings == null) {
+				savepointRestoreSettings = SavepointRestoreSettings.none();
+			}
+			return clusterClient.run(streamGraph, jarFiles, globalClasspaths, userCodeClassLoader, savepointRestoreSettings)
 				.getJobExecutionResult();
 		}
 		catch (ProgramInvocationException e) {
@@ -294,7 +289,9 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 		}
 		finally {
 			try {
-				client.shutdown();
+				if (clusterClient != null) {
+					clusterClient.shutdown();
+				}
 			} catch (Exception e) {
 				LOG.warn("Could not properly shut down the cluster client.", e);
 			}
@@ -319,12 +316,10 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 */
 	@Deprecated
 	protected JobExecutionResult executeRemotely(StreamGraph streamGraph, List<URL> jarFiles) throws ProgramInvocationException {
-		return executeRemotely(streamGraph,
+		return executeRemotely(clusterClientProvider, streamGraph,
 			this.getClass().getClassLoader(),
 			getConfig(),
 			jarFiles,
-			host,
-			port,
 			clientConfiguration,
 			globalClasspaths,
 			savepointRestoreSettings);
@@ -332,31 +327,43 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 
 	@Override
 	public String toString() {
-		return "Remote Environment (" + this.host + ":" + this.port + " - parallelism = "
+		return "Remote Environment (" + " - parallelism = "
 				+ (getParallelism() == -1 ? "default" : getParallelism()) + ")";
 	}
 
-	/**
-	 * Gets the hostname of the master (JobManager), where the
-	 * program will be executed.
-	 *
-	 * @return The hostname of the master
-	 */
-	public String getHost() {
-		return host;
-	}
-
-	/**
-	 * Gets the port of the master (JobManager), where the
-	 * program will be executed.
-	 *
-	 * @return The port of the master
-	 */
-	public int getPort() {
-		return port;
-	}
+//	/**
+//	 * Gets the hostname of the master (JobManager), where the
+//	 * program will be executed.
+//	 *
+//	 * @return The hostname of the master
+//	 */
+//	public String getHost() {
+//		return host;
+//	}
+//
+//	/**
+//	 * Gets the port of the master (JobManager), where the
+//	 * program will be executed.
+//	 *
+//	 * @return The port of the master
+//	 */
+//	public int getPort() {
+//		return port;
+//	}
 
 	public Configuration getClientConfiguration() {
 		return clientConfiguration;
+	}
+
+	@Override
+	public void close() {
+		super.close();
+		if (this.planExecutor != null) {
+			try {
+				this.planExecutor.stop();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

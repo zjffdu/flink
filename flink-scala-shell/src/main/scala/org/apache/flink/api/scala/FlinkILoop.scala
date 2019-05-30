@@ -31,49 +31,34 @@ import scala.tools.nsc.interpreter._
 
 
 class FlinkILoop(
-    val host: String,
-    val port: Int,
     val clientConfig: Configuration,
     val externalJars: Option[Array[String]],
-    val clusterClient: ClusterClient[_],
-    val shouldShutdownCluster: Boolean,
     in0: Option[BufferedReader],
     out0: JPrintWriter)
   extends ILoop(in0, out0) {
 
   def this(
-    host: String,
-    port: Int,
     clientConfig: Configuration,
     externalJars: Option[Array[String]],
-    clusterClient: ClusterClient[_],
-    shouldShutdownCluster: Boolean,
     in0: BufferedReader,
     out: JPrintWriter) {
-    this(host, port, clientConfig, externalJars, clusterClient,
-      shouldShutdownCluster, Some(in0), out)
+    this(clientConfig, externalJars, Some(in0), out)
   }
 
   def this(
-    host: String,
-    port: Int,
     clientConfig: Configuration,
     externalJars: Option[Array[String]],
     clusterClient: ClusterClient[_],
     shouldShutdownCluster: Boolean) {
-    this(host, port, clientConfig, externalJars, clusterClient, shouldShutdownCluster, None,
+    this(clientConfig, externalJars, None,
       new JPrintWriter(Console.out, true))
   }
   
   def this(
-    host: String,
-    port: Int,
     clientConfig: Configuration,
-    clusterClient: ClusterClient[_],
-    shouldShutdownCluster: Boolean,
     in0: BufferedReader,
-    out: JPrintWriter){
-    this(host, port, clientConfig, None, clusterClient, shouldShutdownCluster, in0, out)
+    out: JPrintWriter) {
+    this(clientConfig, None, in0, out)
   }
 
   // remote environment
@@ -84,14 +69,10 @@ class FlinkILoop(
     
     // create our environment that submits against the cluster (local or remote)
     val remoteBenv = new ScalaShellRemoteEnvironment(
-      host,
-      port,
       this,
       clientConfig,
       this.getExternalJars(): _*)
     val remoteSenv = new ScalaShellRemoteStreamEnvironment(
-      host,
-      port,
       this,
       clientConfig,
       getExternalJars(): _*)
@@ -300,10 +281,12 @@ NOTE: Use the prebound Execution Environments and Table Environment to implement
 
   override def closeInterpreter(): Unit = {
     super.closeInterpreter()
-    if (shouldShutdownCluster) {
-      clusterClient.shutDownCluster()
-    }
-    clusterClient.shutdown()
+    scalaBenv.getJavaEnv.close()
+    scalaSenv.getJavaEnv.close()
+  //    if (shouldShutdownCluster) {
+  //      clusterClient.shutDownCluster()
+  //    }
+  //    clusterClient.shutdown()
   }
 }
 

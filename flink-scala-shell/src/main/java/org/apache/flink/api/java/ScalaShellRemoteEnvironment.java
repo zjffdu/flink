@@ -19,8 +19,9 @@ package org.apache.flink.api.java;
  * limitations under the License.
  */
 
-import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.scala.FlinkILoop;
+import org.apache.flink.client.PlanExecutor;
+import org.apache.flink.client.RemoteEnvironment;
 import org.apache.flink.configuration.Configuration;
 
 import java.net.URL;
@@ -28,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Special version of {@link org.apache.flink.api.java.RemoteEnvironment} that has a reference
+ * Special version of {@link RemoteEnvironment} that has a reference
  * to a {@link org.apache.flink.api.scala.FlinkILoop}. When execute is called this will
  * use the reference of the ILoop to write the compiled classes of the current session to
  * a Jar file and submit these with the program.
@@ -49,8 +50,8 @@ public class ScalaShellRemoteEnvironment extends RemoteEnvironment {
 	 *                 user-defined functions, user-defined input formats, or any libraries, those must be
 	 *                 provided in the JAR files.
 	 */
-	public ScalaShellRemoteEnvironment(String host, int port, FlinkILoop flinkILoop, Configuration clientConfig, String... jarFiles) throws Exception {
-		super(host, port, clientConfig, jarFiles, null);
+	public ScalaShellRemoteEnvironment(FlinkILoop flinkILoop, Configuration clientConfig, String... jarFiles) throws Exception {
+		super(clientConfig, jarFiles, null);
 		this.flinkILoop = flinkILoop;
 	}
 
@@ -67,14 +68,17 @@ public class ScalaShellRemoteEnvironment extends RemoteEnvironment {
 
 		List<URL> allJarFiles = new ArrayList<>(jarFiles);
 		allJarFiles.add(jarUrl);
-
-		this.executor = PlanExecutor.createRemoteExecutor(
-			host,
-			port,
-			clientConfiguration,
-			allJarFiles,
-			globalClasspaths
-		);
+		this.jarFiles = allJarFiles;
+		this.executor = new PlanExecutor(clientConfiguration, clusterClientProvider);
+		this.executor.start();
+//
+//			PlanExecutor.createRemoteExecutor(
+//			host,
+//			port,
+//			clientConfiguration,
+//			allJarFiles,
+//			globalClasspaths
+//		);
 
 		executor.setPrintStatusDuringExecution(getConfig().isSysoutLoggingEnabled());
 

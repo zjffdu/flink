@@ -21,6 +21,9 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.client.ClusterClientProvider;
+import org.apache.flink.client.ClusterClientProviderFactory;
+import org.apache.flink.client.PlanExecutor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
@@ -49,6 +52,9 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 
 	private final Configuration configuration;
 
+	private ClusterClientProvider clusterClientProvider;
+	private PlanExecutor planExecutor;
+
 	/**
 	 * Creates a new mini cluster stream environment that uses the default configuration.
 	 */
@@ -69,6 +75,7 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 		}
 		this.configuration = configuration;
 		setParallelism(1);
+		clusterClientProvider = ClusterClientProviderFactory.getClusterClientProvider(this.configuration);
 	}
 
 	protected Configuration getConfiguration() {
@@ -99,26 +106,41 @@ public class LocalStreamEnvironment extends StreamExecutionEnvironment {
 
 		int numSlotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS, jobGraph.getMaximumParallelism());
 
-		MiniClusterConfiguration cfg = new MiniClusterConfiguration.Builder()
-			.setConfiguration(configuration)
-			.setNumSlotsPerTaskManager(numSlotsPerTaskManager)
-			.build();
+		this.planExecutor = new PlanExecutor(configuration, clusterClientProvider);
+		planExecutor.start();
+		return planExecutor.executeJobGraph(jobGraph);
+		//		MiniClusterConfiguration cfg = new MiniClusterConfiguration.Builder()
+		//			.setConfiguration(configuration)
+		//			.setNumSlotsPerTaskManager(numSlotsPerTaskManager)
+		//			.build();
+		//
+		//		if (LOG.isInfoEnabled()) {
+		//			LOG.info("Running job on local embedded Flink mini cluster");
+		//		}
+		//
+		//		MiniCluster miniCluster = new MiniCluster(cfg);
+		//
+		//		try {
+		//			miniCluster.start();
+		//			configuration.setInteger(RestOptions.PORT, miniCluster.getRestAddress().get().getPort());
+		//
+		//			return miniCluster.executeJob(jobGraph);
+		//		}
+		//		finally {
+		//			transformations.clear();
+		//			miniCluster.close();
+		//		}
+	}
 
-		if (LOG.isInfoEnabled()) {
-			LOG.info("Running job on local embedded Flink mini cluster");
-		}
-
-		MiniCluster miniCluster = new MiniCluster(cfg);
-
-		try {
-			miniCluster.start();
-			configuration.setInteger(RestOptions.PORT, miniCluster.getRestAddress().get().getPort());
-
-			return miniCluster.executeJob(jobGraph);
-		}
-		finally {
-			transformations.clear();
-			miniCluster.close();
+	@Override
+	public void close() {
+		super.close();
+		if (this.planExecutor != null) {
+			try {
+				this.planExecutor.stop();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }

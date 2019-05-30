@@ -58,13 +58,11 @@ public class ScalaShellRemoteStreamEnvironment extends RemoteStreamEnvironment {
 	 *				 user-defined input formats, or any libraries, those must be
 	 */
 	public ScalaShellRemoteStreamEnvironment(
-		String host,
-		int port,
 		FlinkILoop flinkILoop,
 		Configuration configuration,
 		String... jarFiles) {
 
-		super(host, port, configuration, jarFiles);
+		super(configuration, jarFiles);
 		this.flinkILoop = flinkILoop;
 	}
 

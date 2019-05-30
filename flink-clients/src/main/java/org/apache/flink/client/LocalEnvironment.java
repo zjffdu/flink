@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.api.java;
+package org.apache.flink.client;
 
 import org.apache.flink.annotation.Public;
 import org.apache.flink.annotation.PublicEvolving;
@@ -25,7 +25,7 @@ import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.Plan;
-import org.apache.flink.api.common.PlanExecutor;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
 
 /**
@@ -45,6 +45,7 @@ public class LocalEnvironment extends ExecutionEnvironment {
 	/** The user-defined configuration for the local execution. */
 	private final Configuration configuration;
 
+	private ClusterClientProvider clusterClientProvider;
 	/** Create lazily upon first use. */
 	private PlanExecutor executor;
 
@@ -72,6 +73,7 @@ public class LocalEnvironment extends ExecutionEnvironment {
 							"(such as Command Line Client, Scala Shell, or TestEnvironment)");
 		}
 		this.configuration = config == null ? new Configuration() : config;
+		this.clusterClientProvider = ClusterClientProviderFactory.getClusterClientProvider(this.configuration);
 	}
 
 	// --------------------------------------------------------------------------------------------
@@ -104,7 +106,7 @@ public class LocalEnvironment extends ExecutionEnvironment {
 			return executor.getOptimizerPlanAsJSON(p);
 		}
 		else {
-			PlanExecutor tempExecutor = PlanExecutor.createLocalExecutor(configuration);
+			PlanExecutor tempExecutor = new PlanExecutor(configuration, clusterClientProvider);
 			return tempExecutor.getOptimizerPlanAsJSON(p);
 		}
 	}
@@ -120,7 +122,8 @@ public class LocalEnvironment extends ExecutionEnvironment {
 		}
 
 		// create a new local executor
-		executor = PlanExecutor.createLocalExecutor(configuration);
+		executor = new PlanExecutor(configuration, clusterClientProvider);
+		executor.start();
 		executor.setPrintStatusDuringExecution(getConfig().isSysoutLoggingEnabled());
 
 		// if we have a session, start the mini cluster eagerly to have it available across sessions
@@ -129,6 +132,16 @@ public class LocalEnvironment extends ExecutionEnvironment {
 
 			// also install the reaper that will shut it down eventually
 			executorReaper = new ExecutorReaper(executor);
+		}
+	}
+
+	@Override
+	public void close() {
+		super.close();
+		try {
+			this.executor.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 

@@ -77,7 +77,7 @@ public class RemoteStreamExecutionEnvironmentTest extends TestLogger {
 	@Test
 	public void testRemoteExecutionWithSavepoint() throws Exception {
 		SavepointRestoreSettings restoreSettings = SavepointRestoreSettings.forPath("fakePath");
-		RemoteStreamEnvironment env = new RemoteStreamEnvironment("fakeHost", 1,
+		RemoteStreamEnvironment env = new RemoteStreamEnvironment(
 			null, new String[]{}, null, restoreSettings);
 		env.fromElements(1).map(x -> x * 2);
 

@@ -66,6 +66,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -1042,6 +1044,10 @@ public abstract class ExecutionEnvironment {
 		this.sinks.add(sink);
 	}
 
+	public void close() {
+
+	}
+
 	/**
 	 * Gets a default job name, based on the timestamp when this method is invoked.
 	 *
@@ -1090,7 +1096,7 @@ public abstract class ExecutionEnvironment {
 	 *
 	 * @return A local execution environment.
 	 */
-	public static LocalEnvironment createLocalEnvironment() {
+	public static ExecutionEnvironment createLocalEnvironment() {
 		return createLocalEnvironment(defaultLocalDop);
 	}
 
@@ -1102,7 +1108,7 @@ public abstract class ExecutionEnvironment {
 	 * @param parallelism The parallelism for the local environment.
 	 * @return A local execution environment with the specified parallelism.
 	 */
-	public static LocalEnvironment createLocalEnvironment(int parallelism) {
+	public static ExecutionEnvironment createLocalEnvironment(int parallelism) {
 		return createLocalEnvironment(new Configuration(), parallelism);
 	}
 
@@ -1114,7 +1120,7 @@ public abstract class ExecutionEnvironment {
 	 * @param customConfiguration Pass a custom configuration to the LocalEnvironment.
 	 * @return A local execution environment with the specified parallelism.
 	 */
-	public static LocalEnvironment createLocalEnvironment(Configuration customConfiguration) {
+	public static ExecutionEnvironment createLocalEnvironment(Configuration customConfiguration) {
 		return createLocalEnvironment(customConfiguration, -1);
 	}
 
@@ -1150,14 +1156,18 @@ public abstract class ExecutionEnvironment {
 	 * @param defaultParallelism to initialize the {@link LocalEnvironment} with
 	 * @return {@link LocalEnvironment}
 	 */
-	private static LocalEnvironment createLocalEnvironment(Configuration configuration, int defaultParallelism) {
-		final LocalEnvironment localEnvironment = new LocalEnvironment(configuration);
-
-		if (defaultParallelism > 0) {
-			localEnvironment.setParallelism(defaultParallelism);
+	private static ExecutionEnvironment createLocalEnvironment(Configuration configuration, int defaultParallelism) {
+		String environmentClassName = "org.apache.flink.client.LocalEnvironment";
+		try {
+			Constructor constructor = Class.forName(environmentClassName).getConstructor(Configuration.class);
+			ExecutionEnvironment localEnvironment = (ExecutionEnvironment) constructor.newInstance(configuration);
+			if (defaultParallelism > 0) {
+				localEnvironment.setParallelism(defaultParallelism);
+			}
+			return localEnvironment;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
 		}
-
-		return localEnvironment;
 	}
 
 	/**
@@ -1174,7 +1184,16 @@ public abstract class ExecutionEnvironment {
 	 * @return A remote environment that executes the program on a cluster.
 	 */
 	public static ExecutionEnvironment createRemoteEnvironment(String host, int port, String... jarFiles) {
-		return new RemoteEnvironment(host, port, jarFiles);
+		String environmentClassName = "org.apache.flink.client.RemoteEnvironment";
+		try {
+			Constructor constructor = Class.forName(environmentClassName)
+				.getConstructor(String.class, Integer.class, String[].class);
+			ExecutionEnvironment remoteEnvironment = (ExecutionEnvironment)
+				constructor.newInstance(host, port, jarFiles);
+			return remoteEnvironment;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -1195,7 +1214,16 @@ public abstract class ExecutionEnvironment {
 	 */
 	public static ExecutionEnvironment createRemoteEnvironment(
 			String host, int port, Configuration clientConfiguration, String... jarFiles) {
-		return new RemoteEnvironment(host, port, clientConfiguration, jarFiles, null);
+		String environmentClassName = "org.apache.flink.client.RemoteEnvironment";
+		try {
+			Constructor constructor = Class.forName(environmentClassName)
+				.getConstructor(String.class, Integer.class, Configuration.class, String[].class, URL[].class);
+			ExecutionEnvironment remoteEnvironment = (ExecutionEnvironment)
+				constructor.newInstance(host, port, clientConfiguration, jarFiles, null);
+			return remoteEnvironment;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -1212,7 +1240,7 @@ public abstract class ExecutionEnvironment {
 	 * @return A remote environment that executes the program on a cluster.
 	 */
 	public static ExecutionEnvironment createRemoteEnvironment(String host, int port, int parallelism, String... jarFiles) {
-		RemoteEnvironment rec = new RemoteEnvironment(host, port, jarFiles);
+		ExecutionEnvironment rec = createRemoteEnvironment(host, port, jarFiles);
 		rec.setParallelism(parallelism);
 		return rec;
 	}

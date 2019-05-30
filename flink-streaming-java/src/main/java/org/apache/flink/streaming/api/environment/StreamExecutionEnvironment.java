@@ -43,6 +43,7 @@ import org.apache.flink.api.java.typeutils.MissingTypeInfo;
 import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
+import org.apache.flink.client.ClusterClientProvider;
 import org.apache.flink.client.program.ContextEnvironment;
 import org.apache.flink.client.program.OptimizerPlanEnvironment;
 import org.apache.flink.client.program.PreviewPlanEnvironment;
@@ -144,12 +145,19 @@ public abstract class StreamExecutionEnvironment {
 	/** The time characteristic used by the data streams. */
 	private TimeCharacteristic timeCharacteristic = DEFAULT_TIME_CHARACTERISTIC;
 
+	protected ClusterClientProvider clusterClientProvider;
+
 	protected final List<Tuple2<String, DistributedCache.DistributedCacheEntry>> cacheFile = new ArrayList<>();
 
 
 	// --------------------------------------------------------------------------------------------
 	// Constructor and Properties
 	// --------------------------------------------------------------------------------------------
+
+
+	public ClusterClientProvider getClusterClientProvider() {
+		return clusterClientProvider;
+	}
 
 	/**
 	 * Gets the config object.
@@ -1593,6 +1601,10 @@ public abstract class StreamExecutionEnvironment {
 		this.transformations.add(transformation);
 	}
 
+	public void close() {
+
+	}
+
 	// --------------------------------------------------------------------------------------------
 	//  Factory methods for ExecutionEnvironments
 	// --------------------------------------------------------------------------------------------
@@ -1720,9 +1732,8 @@ public abstract class StreamExecutionEnvironment {
 	 * 		provided in the JAR files.
 	 * @return A remote environment that executes the program on a cluster.
 	 */
-	public static StreamExecutionEnvironment createRemoteEnvironment(
-			String host, int port, String... jarFiles) {
-		return new RemoteStreamEnvironment(host, port, jarFiles);
+	public static StreamExecutionEnvironment createRemoteEnvironment(String... jarFiles) {
+		return new RemoteStreamEnvironment(jarFiles);
 	}
 
 	/**
@@ -1746,9 +1757,8 @@ public abstract class StreamExecutionEnvironment {
 	 * 		provided in the JAR files.
 	 * @return A remote environment that executes the program on a cluster.
 	 */
-	public static StreamExecutionEnvironment createRemoteEnvironment(
-			String host, int port, int parallelism, String... jarFiles) {
-		RemoteStreamEnvironment env = new RemoteStreamEnvironment(host, port, jarFiles);
+	public static StreamExecutionEnvironment createRemoteEnvironment(int parallelism, String... jarFiles) {
+		RemoteStreamEnvironment env = new RemoteStreamEnvironment(jarFiles);
 		env.setParallelism(parallelism);
 		return env;
 	}
@@ -1776,7 +1786,7 @@ public abstract class StreamExecutionEnvironment {
 	 */
 	public static StreamExecutionEnvironment createRemoteEnvironment(
 			String host, int port, Configuration clientConfig, String... jarFiles) {
-		return new RemoteStreamEnvironment(host, port, clientConfig, jarFiles);
+		return new RemoteStreamEnvironment(clientConfig, jarFiles);
 	}
 
 	/**

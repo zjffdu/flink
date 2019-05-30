@@ -22,6 +22,7 @@ import org.apache.flink.api.common.functions.RichMapPartitionFunction;
 import org.apache.flink.api.common.io.GenericInputFormat;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.client.RemoteEnvironment;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.GenericInputSplit;
@@ -40,7 +41,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Integration tests for {@link org.apache.flink.api.java.RemoteEnvironment}.
+ * Integration tests for {@link RemoteEnvironment}.
  */
 @SuppressWarnings("serial")
 public class RemoteEnvironmentITCase extends TestLogger {
