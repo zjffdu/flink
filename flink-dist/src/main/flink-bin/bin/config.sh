@@ -22,7 +22,7 @@ constructFlinkClassPath() {
     local FLINK_CLASSPATH
 
     while read -d '' -r jarfile ; do
-        if [[ "$jarfile" =~ .*flink-dist.*.jar ]]; then
+        if [[ "$jarfile" == *"flink-dist"* ]]; then
             FLINK_DIST="$FLINK_DIST":"$jarfile"
         elif [[ "$FLINK_CLASSPATH" == "" ]]; then
             FLINK_CLASSPATH="$jarfile";
@@ -38,8 +38,14 @@ constructFlinkClassPath() {
         # exit function with empty classpath to force process failure
         exit 1
     fi
+    
+    #echo "FLINK_CLASSPATH********: $FLINK_CLASSPATH"
+    #echo "FLINK_DIST**********: $LINK_DIST"   
+    if [[ $FLINK_CLASSPATH != *"flink-shaded-hadoop"* ]]; then
+        FLINK_CLASSPATH=${FLINK_CLASSPATH}:$(hadoop classpath)
+    fi
 
-    echo "$FLINK_CLASSPATH""$FLINK_DIST"
+    echo "$FLINK_DIST":"$FLINK_CLASSPATH"
 }
 
 # These are used to mangle paths that are passed to java when using
