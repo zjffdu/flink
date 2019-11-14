@@ -19,9 +19,11 @@
 package org.apache.flink.client;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.dag.Pipeline;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
@@ -95,7 +97,9 @@ public class LocalExecutor extends PlanExecutor {
 	public JobExecutionResult executePlan(
 			Pipeline pipeline,
 			List<URL> jarFiles,
-			List<URL> globalClasspaths) throws Exception {
+			List<URL> globalClasspaths,
+			List<JobListener> jobListeners,
+			boolean detached) throws Exception {
 		checkNotNull(pipeline);
 
 		// This is a quirk in how LocalEnvironment used to work. It sets the default parallelism
@@ -119,5 +123,10 @@ public class LocalExecutor extends PlanExecutor {
 				baseConfiguration)) {
 			return executorService.executeJobBlocking(jobGraph);
 		}
+	}
+
+	@Override
+	public void cancel(JobID jobID) throws Exception {
+		throw new UnsupportedOperationException();
 	}
 }

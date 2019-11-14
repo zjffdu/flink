@@ -18,9 +18,10 @@
 
 package org.apache.flink.streaming.util;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.minicluster.JobExecutor;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -65,7 +66,7 @@ public class TestStreamEnvironment extends StreamExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+	protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
 		final JobGraph jobGraph = streamGraph.getJobGraph();
 		transformations.clear();
 
@@ -75,7 +76,7 @@ public class TestStreamEnvironment extends StreamExecutionEnvironment {
 
 		jobGraph.setClasspaths(new ArrayList<>(classPaths));
 
-		return jobExecutor.executeJobBlocking(jobGraph);
+		return jobExecutor.execute(jobGraph, jobListeners, detached);
 	}
 
 	// ------------------------------------------------------------------------

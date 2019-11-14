@@ -22,6 +22,8 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.configuration.Configuration;
@@ -70,16 +72,31 @@ public class LocalEnvironment extends ExecutionEnvironment {
 
 	// --------------------------------------------------------------------------------------------
 
+	PlanExecutor executor;
+
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	protected JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		final Plan p = createProgramPlan(jobName);
 
-		final PlanExecutor executor = PlanExecutor.createLocalExecutor(configuration);
-		lastJobExecutionResult = executor.executePlan(
-				p,
-				Collections.emptyList(),
-				Collections.emptyList());
-		return lastJobExecutionResult;
+		executor = PlanExecutor.createLocalExecutor(configuration);
+
+		JobSubmissionResult jobSubmissionResult = executor.executePlan(
+			p,
+			Collections.emptyList(),
+			Collections.emptyList(),
+			jobListeners,
+			detached);
+		if (!detached) {
+			lastJobExecutionResult = (JobExecutionResult) jobSubmissionResult;
+		}
+		return jobSubmissionResult;
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+		if (executor != null) {
+			executor.cancel(jobId);
+		}
 	}
 
 	@Override

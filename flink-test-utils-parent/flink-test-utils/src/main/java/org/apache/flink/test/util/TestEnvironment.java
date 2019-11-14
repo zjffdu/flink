@@ -19,6 +19,8 @@
 package org.apache.flink.test.util;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.ExecutionEnvironmentFactory;
@@ -96,7 +98,7 @@ public class TestEnvironment extends ExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		OptimizedPlan op = compileProgram(jobName);
 
 		JobGraphGenerator jgg = new JobGraphGenerator();
@@ -108,8 +110,16 @@ public class TestEnvironment extends ExecutionEnvironment {
 
 		jobGraph.setClasspaths(new ArrayList<>(classPaths));
 
-		this.lastJobExecutionResult = jobExecutor.executeJobBlocking(jobGraph);
-		return this.lastJobExecutionResult;
+		JobSubmissionResult jobSubmissionResult = jobExecutor.execute(jobGraph, jobListeners, detached);
+		if (!detached) {
+			lastJobExecutionResult = jobSubmissionResult.getJobExecutionResult();
+		}
+		return jobSubmissionResult;
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+
 	}
 
 	private OptimizedPlan compileProgram(String jobName) {

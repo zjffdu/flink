@@ -21,6 +21,7 @@ package org.apache.flink.client.program;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
@@ -58,11 +59,11 @@ public class ContextEnvironment extends ExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		verifyExecuteIsCalledOnceWhenInDetachedMode();
 
-		final JobExecutionResult jobExecutionResult = super.execute(jobName);
-		setJobExecutionResult(jobExecutionResult);
+		final JobSubmissionResult jobExecutionResult = super.executeInternal(jobName, detached);
+		setJobExecutionResult(jobExecutionResult.getJobExecutionResult());
 		return jobExecutionResult;
 	}
 

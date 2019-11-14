@@ -18,7 +18,8 @@
 
 package org.apache.flink.api.java;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
@@ -124,9 +125,13 @@ public class FlinkILoopTest extends TestLogger {
 		private List<String> globalClasspaths;
 
 		@Override
-		public JobExecutionResult executePlan(
-				Pipeline plan, List<URL> jarFiles, List<URL> globalClasspaths) throws Exception {
+		public JobSubmissionResult executePlan(Pipeline plan, List<URL> jarFiles, List<URL> globalClasspaths, List<JobListener> jobListeners, boolean detached) throws Exception {
 			return null;
+		}
+
+		@Override
+		public void cancel(JobID jobID) throws Exception {
+
 		}
 
 		public String getHost() {

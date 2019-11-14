@@ -18,11 +18,12 @@
 
 package org.apache.flink.streaming.connectors.kafka;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -238,8 +239,8 @@ public abstract class KafkaTableSourceSinkFactoryTestBase extends TestLogger {
 		}
 
 		@Override
-		public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
-			throw new UnsupportedOperationException();
+		protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
+			return null;
 		}
 	}
 

@@ -24,6 +24,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.io.FileOutputFormat;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
@@ -651,6 +652,53 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 		}
 	}
 
+	/**
+	 * This method runs a job in blocking/non-blocking (depends on attached) mode. The method returns only after the job
+	 * completed successfully, or after it failed terminally.
+	 *
+	 * @param job  The Flink job to execute
+	 * @return The result of the job execution
+	 *
+	 * @throws JobExecutionException Thrown if anything went amiss during initial job launch,
+	 *         or if the job terminally failed.
+	 */
+	@Override
+	public JobSubmissionResult execute(JobGraph job, List<JobListener> jobListeners, boolean detached) throws JobExecutionException, InterruptedException {
+		checkNotNull(job, "job is null");
+
+		final CompletableFuture<JobSubmissionResult> submissionFuture = submitJob(job);
+
+		JobSubmissionResult jobSubmissionResult = null;
+		try {
+			jobSubmissionResult = submissionFuture.get();
+		} catch (ExecutionException e) {
+			throw new JobExecutionException(job.getJobID(), "Could not submit Job.", ExceptionUtils.stripExecutionException(e));
+		}
+		if (jobListeners != null) {
+			for (JobListener jobListener : jobListeners) {
+				jobListener.onJobSubmitted(jobSubmissionResult.getJobID());
+			}
+		}
+		if (detached) {
+			return jobSubmissionResult;
+		}
+		final CompletableFuture<JobResult> jobResultFuture = requestJobResult(job.getJobID());
+
+		final JobResult jobResult;
+
+		try {
+			jobResult = jobResultFuture.get();
+		} catch (ExecutionException e) {
+			throw new JobExecutionException(job.getJobID(), "Could not retrieve JobResult.", ExceptionUtils.stripExecutionException(e));
+		}
+
+		try {
+			return jobResult.toJobExecutionResult(Thread.currentThread().getContextClassLoader());
+		} catch (IOException | ClassNotFoundException e) {
+			throw new JobExecutionException(job.getJobID(), e);
+		}
+	}
+
 	public CompletableFuture<JobSubmissionResult> submitJob(JobGraph jobGraph) {
 		final CompletableFuture<DispatcherGateway> dispatcherGatewayFuture = getDispatcherGatewayFuture();
 		final CompletableFuture<InetSocketAddress> blobServerAddressFuture = createBlobServerAddress(dispatcherGatewayFuture);
@@ -662,6 +710,15 @@ public class MiniCluster implements JobExecutorService, AutoCloseableAsync {
 			.thenCompose(Function.identity());
 		return acknowledgeCompletableFuture.thenApply(
 			(Acknowledge ignored) -> new JobSubmissionResult(jobGraph.getJobID()));
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws JobExecutionException {
+		try {
+			getDispatcherGatewayFuture().get().cancelJob(jobId, RpcUtils.INF_TIMEOUT);
+		} catch (InterruptedException | ExecutionException e) {
+			throw new JobExecutionException(jobId, e);
+		}
 	}
 
 	public CompletableFuture<JobResult> requestJobResult(JobID jobId) {

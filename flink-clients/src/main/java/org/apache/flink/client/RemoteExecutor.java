@@ -18,9 +18,11 @@
 
 package org.apache.flink.client;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.dag.Pipeline;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.Configuration;
@@ -98,10 +100,12 @@ public class RemoteExecutor extends PlanExecutor {
 	// ------------------------------------------------------------------------
 
 	@Override
-	public JobExecutionResult executePlan(
+	public JobSubmissionResult executePlan(
 			Pipeline plan,
 			List<URL> jarFiles,
-			List<URL> globalClasspaths) throws Exception {
+			List<URL> globalClasspaths,
+			List<JobListener> jobListeners,
+			boolean detached) throws Exception {
 		checkNotNull(plan);
 
 		JobGraph jobGraph = FlinkPipelineTranslationUtil.getJobGraph(plan,
@@ -117,17 +121,30 @@ public class RemoteExecutor extends PlanExecutor {
 				getClass().getClassLoader(),
 				clientConfiguration);
 
-		return executePlanWithJars(jobGraph, userCodeClassLoader);
+		return executePlanWithJars(jobGraph, userCodeClassLoader, jobListeners, detached);
 	}
 
-	private JobExecutionResult executePlanWithJars(JobGraph jobGraph, ClassLoader classLoader) throws Exception {
+	private JobSubmissionResult executePlanWithJars(JobGraph jobGraph, ClassLoader classLoader, List<JobListener> jobListeners, boolean detached) throws Exception {
 		checkNotNull(jobGraph);
 		checkNotNull(classLoader);
 
 		try (ClusterClient<?> client = new RestClusterClient<>(
 				clientConfiguration,
 				"RemoteExecutor")) {
-			return ClientUtils.submitJobAndWaitForResult(client, jobGraph, classLoader).getJobExecutionResult();
+			if (detached) {
+				return ClientUtils.submitJob(client, jobGraph, jobListeners);
+			} else {
+				return ClientUtils.submitJobAndWaitForResult(client, jobGraph, classLoader, jobListeners).getJobExecutionResult();
+			}
+		}
+	}
+
+	@Override
+	public void cancel(JobID jobID) throws Exception {
+		try (ClusterClient<?> client = new RestClusterClient<>(
+			clientConfiguration,
+			"RemoteExecutor")) {
+			client.cancel(jobID).get();
 		}
 	}
 }

@@ -18,7 +18,8 @@
 
 package org.apache.flink.client.program;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.ExecutionEnvironmentFactory;
@@ -39,11 +40,16 @@ public class OptimizerPlanEnvironment extends ExecutionEnvironment {
 	// ------------------------------------------------------------------------
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	public JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		this.pipeline = createProgramPlan();
 
 		// do not go on with anything now!
 		throw new ProgramAbortException();
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+
 	}
 
 	public Pipeline getPipeline(PackagedProgram prog) throws ProgramInvocationException {

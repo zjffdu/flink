@@ -24,6 +24,8 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.cache.DistributedCache.DistributedCacheEntry;
 import org.apache.flink.api.common.io.FileInputFormat;
@@ -136,6 +138,8 @@ public class ExecutionEnvironment {
 
 	private final ClassLoader userClassloader;
 
+	protected List<JobListener> jobListeners = new ArrayList();
+
 	/**
 	 * Creates a new Execution Environment.
 	 */
@@ -169,6 +173,10 @@ public class ExecutionEnvironment {
 	@Internal
 	public Configuration getConfiguration() {
 		return this.configuration;
+	}
+
+	public void addJobListener(JobListener jobListener) {
+		this.jobListeners.add(jobListener);
 	}
 
 	// --------------------------------------------------------------------------------------------
@@ -804,6 +812,38 @@ public class ExecutionEnvironment {
 	 * @throws Exception Thrown, if the program executions fails.
 	 */
 	public JobExecutionResult execute(String jobName) throws Exception {
+		return executeInternal(jobName, false).getJobExecutionResult();
+	}
+
+	private void consolidateParallelismDefinitionsInConfiguration() {
+		final int execParallelism = getParallelism();
+		if (execParallelism == ExecutionConfig.PARALLELISM_DEFAULT) {
+			return;
+		}
+
+		// if parallelism is set in the ExecutorConfig, then
+		// that value takes precedence over any other value.
+
+		configuration.set(CoreOptions.DEFAULT_PARALLELISM, execParallelism);
+	}
+
+	/**
+	 * Triggers the program execution. The environment will execute all parts of the program that have
+	 * resulted in a "sink" operation. Sink operations are for example printing results ({@link DataSet#print()},
+	 * writing results (e.g. {@link DataSet#writeAsText(String)},
+	 * {@link DataSet#write(org.apache.flink.api.common.io.FileOutputFormat, String)}, or other generic
+	 * data sinks created with {@link DataSet#output(org.apache.flink.api.common.io.OutputFormat)}.
+	 *
+	 * <p>The program execution will be logged and displayed with the given job name.
+	 * And it can run in either sync or async mode (detached mode) which depends on the parameter {{@param detached}}
+	 *
+	 * @param jobName
+	 * @param detached  whether in async mode, true for async, false for sync
+	 * @return The result is {@link JobSubmissionResult} when it is detached, otherwise it is {@link JobExecutionResult}
+	 * when it is non-detached mode
+	 * @throws Exception
+	 */
+	protected JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		if (configuration.get(DeploymentOptions.TARGET) == null) {
 			throw new RuntimeException("No execution.target specified in your configuration file.");
 		}
@@ -812,7 +852,7 @@ public class ExecutionEnvironment {
 
 		final Plan plan = createProgramPlan(jobName);
 		final ExecutorFactory executorFactory =
-				executorServiceLoader.getExecutorFactory(configuration);
+			executorServiceLoader.getExecutorFactory(configuration);
 
 		final Executor executor = executorFactory.getExecutor(configuration);
 
@@ -826,10 +866,37 @@ public class ExecutionEnvironment {
 		}
 	}
 
-	private void consolidateParallelismDefinitionsInConfiguration() {
-		if (getParallelism() == ExecutionConfig.PARALLELISM_DEFAULT) {
-			configuration.getOptional(CoreOptions.DEFAULT_PARALLELISM).ifPresent(this::setParallelism);
-		}
+	/**
+	 * Similar with method {@link #execute()}, but just execute job in async mode.
+	 *
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync() throws Exception {
+		return executeAsync(getDefaultName());
+	}
+
+	/**
+	 * Similar with method {@link #execute(String jobName)}, but just execute job in async mode.
+	 *
+	 * @param jobName
+	 * @return JobSubmissionResult it only contains the JobId which you can use it to do follow up operations,
+	 * like query job status / cancel job
+	 * @throws Exception
+	 */
+	public JobSubmissionResult executeAsync(String jobName) throws Exception {
+		return executeInternal(jobName, true);
+	}
+
+	/**
+	 * Cancel specified job.
+	 *
+	 * @param jobId
+	 * @throws Exception
+	 */
+	public void cancel(JobID jobId) throws Exception {
+
 	}
 
 	/**

@@ -19,7 +19,7 @@ package org.apache.flink.api.java;
  * limitations under the License.
  */
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.scala.FlinkILoop;
@@ -58,13 +58,16 @@ public class ScalaShellRemoteEnvironment extends RemoteEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	protected JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		final Plan p = createProgramPlan(jobName);
 		final List<URL> allJarFiles = getUpdatedJarFiles();
 
 		final PlanExecutor executor = PlanExecutor.createRemoteExecutor(host, port, clientConfiguration);
-		lastJobExecutionResult = executor.executePlan(p, allJarFiles, globalClasspaths);
-		return lastJobExecutionResult;
+		JobSubmissionResult jobSubmissionResult = executor.executePlan(p, allJarFiles, globalClasspaths, jobListeners, detached);
+		if (!detached) {
+			lastJobExecutionResult = jobSubmissionResult.getJobExecutionResult();
+		}
+		return jobSubmissionResult;
 	}
 
 	private List<URL> getUpdatedJarFiles() throws MalformedURLException {

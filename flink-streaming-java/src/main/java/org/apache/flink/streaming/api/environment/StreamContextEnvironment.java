@@ -18,8 +18,9 @@
 package org.apache.flink.streaming.api.environment;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.client.program.ContextEnvironment;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -46,11 +47,13 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+	protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
 		transformations.clear();
 
-		final JobExecutionResult jobExecutionResult = super.execute(streamGraph);
-		ctx.setJobExecutionResult(jobExecutionResult);
-		return jobExecutionResult;
+		final JobSubmissionResult jobSubmissionResult = super.executeInternal(streamGraph, savepointRestoreSettings, detached);
+		if (!detached) {
+			ctx.setJobExecutionResult(jobSubmissionResult.getJobExecutionResult());
+		}
+		return jobSubmissionResult;
 	}
 }

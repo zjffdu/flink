@@ -18,17 +18,17 @@
 package org.apache.flink.api.scala
 
 import com.esotericsoftware.kryo.Serializer
-import org.apache.flink.annotation.{PublicEvolving, Public}
+import org.apache.flink.annotation.{Public, PublicEvolving}
 import org.apache.flink.api.common.io.{FileInputFormat, InputFormat}
 import org.apache.flink.api.common.restartstrategy.RestartStrategies.RestartStrategyConfiguration
 import org.apache.flink.api.common.typeinfo.{BasicTypeInfo, TypeInformation}
 import org.apache.flink.api.common.typeutils.CompositeType
-import org.apache.flink.api.common.{ExecutionConfig, JobExecutionResult}
+import org.apache.flink.api.common.{ExecutionConfig, JobExecutionResult, JobID, JobSubmissionResult}
 import org.apache.flink.api.java.io._
 import org.apache.flink.api.java.operators.DataSource
 import org.apache.flink.api.java.typeutils.runtime.kryo.KryoSerializer
 import org.apache.flink.api.java.typeutils.{PojoTypeInfo, TupleTypeInfoBase, ValueTypeInfo}
-import org.apache.flink.api.java.{CollectionEnvironment, ExecutionEnvironment => JavaEnv}
+import org.apache.flink.api.java.{CollectionEnvironment, JobListener, ExecutionEnvironment => JavaEnv}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.Path
 import org.apache.flink.types.StringValue
@@ -69,6 +69,22 @@ class ExecutionEnvironment(javaEnv: JavaEnv) {
    */
   def getConfig: ExecutionConfig = {
     javaEnv.getConfig
+  }
+
+  def addJobListener(jobListener: JobListener): Unit = {
+    javaEnv.addJobListener(jobListener)
+  }
+
+  def executeAsync(): JobSubmissionResult = {
+    javaEnv.executeAsync()
+  }
+
+  def executeAsync(jobName: String): JobSubmissionResult = {
+    javaEnv.executeAsync(jobName)
+  }
+
+  def cancel(jobId: JobID): Unit = {
+    javaEnv.cancel(jobId)
   }
 
   /**

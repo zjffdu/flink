@@ -23,6 +23,7 @@ import org.apache.flink.annotation.{Internal, Public, PublicEvolving}
 import org.apache.flink.api.common.io.{FileInputFormat, FilePathFilter, InputFormat}
 import org.apache.flink.api.common.restartstrategy.RestartStrategies.RestartStrategyConfiguration
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.JobListener
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable
 import org.apache.flink.api.java.typeutils.runtime.kryo.KryoSerializer
 import org.apache.flink.api.scala.ClosureCleaner
@@ -50,6 +51,16 @@ class StreamExecutionEnvironment(javaEnv: JavaEnv) {
    * Gets the config object.
    */
   def getConfig = javaEnv.getConfig
+
+  def addJobListener(jobListener: JobListener) = {
+    javaEnv.addJobListener(jobListener)
+  }
+
+  def executeAsync(jobName: String) = javaEnv.executeAsync(jobName)
+
+  def executeAsync() = javaEnv.executeAsync()
+
+  def cancel(jobId: String) = javaEnv.cancel(jobId)
 
   /**
     * Gets cache files.

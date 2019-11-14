@@ -21,6 +21,8 @@ package org.apache.flink.api.java;
 import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.configuration.Configuration;
@@ -152,12 +154,21 @@ public class RemoteEnvironment extends ExecutionEnvironment {
 	// ------------------------------------------------------------------------
 
 	@Override
-	public JobExecutionResult execute(String jobName) throws Exception {
+	protected JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 		final Plan p = createProgramPlan(jobName);
 
 		final PlanExecutor executor = PlanExecutor.createRemoteExecutor(host, port, clientConfiguration);
-		lastJobExecutionResult = executor.executePlan(p, jarFiles, globalClasspaths);
-		return lastJobExecutionResult;
+		JobSubmissionResult jobSubmissionResult = executor.executePlan(p, jarFiles, globalClasspaths, jobListeners, detached);
+		if (!detached) {
+			lastJobExecutionResult = (JobExecutionResult) jobSubmissionResult;
+		}
+		return jobSubmissionResult;
+	}
+
+	@Override
+	public void cancel(JobID jobId) throws Exception {
+		final PlanExecutor executor = PlanExecutor.createRemoteExecutor(host, port, clientConfiguration);
+		executor.cancel(jobId);
 	}
 
 	@Override

@@ -18,7 +18,8 @@
 
 package org.apache.flink.test.optimizer.jsonplan;
 
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.ExecutionEnvironmentFactory;
@@ -334,7 +335,7 @@ public class JsonJobGraphGenerationTest {
 		}
 
 		@Override
-		public JobExecutionResult execute(String jobName) throws Exception {
+		public JobSubmissionResult executeInternal(String jobName, boolean detached) throws Exception {
 			Plan plan = createProgramPlan(jobName);
 
 			Optimizer pc = new Optimizer(new Configuration());
@@ -352,6 +353,11 @@ public class JsonJobGraphGenerationTest {
 			validator.validateJson(jsonPlan);
 
 			throw new AbortError();
+		}
+
+		@Override
+		public void cancel(JobID jobId) throws Exception {
+
 		}
 
 		public static void setAsNext(final JsonValidator validator, final int defaultParallelism) {

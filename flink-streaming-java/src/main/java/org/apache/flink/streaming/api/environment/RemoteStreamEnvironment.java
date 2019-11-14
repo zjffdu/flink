@@ -22,8 +22,10 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.PlanExecutor;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.client.ClientUtils;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.ProgramInvocationException;
@@ -232,7 +234,9 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 			port,
 			clientConfiguration,
 			globalClasspaths,
-			savepointRestoreSettings);
+			savepointRestoreSettings,
+			null,
+			false).getJobExecutionResult();
 	}
 
 	/**
@@ -241,14 +245,16 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 * <p>Method for internal use since it exposes stream graph and other implementation details that are subject to change.
 	 * @throws ProgramInvocationException
 	 */
-	private static JobExecutionResult executeRemotely(StreamGraph streamGraph,
+	private static JobSubmissionResult executeRemotely(StreamGraph streamGraph,
 		ExecutionConfig executionConfig,
 		List<URL> jarFiles,
 		String host,
 		int port,
 		Configuration clientConfiguration,
 		List<URL> globalClasspaths,
-		SavepointRestoreSettings savepointRestoreSettings
+		SavepointRestoreSettings savepointRestoreSettings,
+		List<JobListener> jobListeners,
+		boolean detached
 	) throws ProgramInvocationException {
 		if (LOG.isInfoEnabled()) {
 			LOG.info("Running remotely at {}:{}", host, port);
@@ -280,7 +286,7 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 					port,
 					clientConfiguration);
 
-			return executor.executePlan(streamGraph, jarFiles, globalClasspaths).getJobExecutionResult();
+			return executor.executePlan(streamGraph, jarFiles, globalClasspaths, jobListeners, detached);
 		}
 		catch (ProgramInvocationException e) {
 			throw e;
@@ -299,9 +305,9 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	}
 
 	@Override
-	public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+	protected JobSubmissionResult executeInternal(StreamGraph streamGraph, SavepointRestoreSettings savepointRestoreSettings, boolean detached) throws Exception {
 		transformations.clear();
-		return executeRemotely(streamGraph, jarFiles);
+		return executeRemotely(streamGraph, jarFiles, detached);
 	}
 
 	/**
@@ -315,7 +321,7 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 */
 	@Deprecated
-	protected JobExecutionResult executeRemotely(StreamGraph streamGraph, List<URL> jarFiles) throws ProgramInvocationException {
+	protected JobSubmissionResult executeRemotely(StreamGraph streamGraph, List<URL> jarFiles, boolean detached) throws ProgramInvocationException {
 		return executeRemotely(streamGraph,
 			getConfig(),
 			jarFiles,
@@ -323,7 +329,9 @@ public class RemoteStreamEnvironment extends StreamExecutionEnvironment {
 			port,
 			clientConfiguration,
 			globalClasspaths,
-			savepointRestoreSettings);
+			savepointRestoreSettings,
+			jobListeners,
+			detached);
 	}
 
 	@Override

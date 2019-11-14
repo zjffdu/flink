@@ -20,6 +20,7 @@ package org.apache.flink.api.common;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.dag.Pipeline;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.configuration.Configuration;
 
 import java.net.URL;
@@ -48,6 +49,13 @@ public abstract class PlanExecutor {
 	//  Program Execution
 	// ------------------------------------------------------------------------
 
+	public JobExecutionResult executePlan(
+		Pipeline plan,
+		List<URL> jarFiles,
+		List<URL> globalClasspaths) throws Exception {
+		return executePlan(plan, jarFiles, globalClasspaths, null, false).getJobExecutionResult();
+	}
+
 	/**
 	 * Execute the given program.
 	 *
@@ -64,14 +72,20 @@ public abstract class PlanExecutor {
 	 * 		classloader of the program. Paths must specify a protocol (e.g. file://) and be
 	 * 		accessible
 	 * 		on all nodes.
+	 * @param jobListeners
+	 * @param detached whether in detached mode.
 	 * @return The execution result, containing for example the net runtime of the program, and the
 	 * 		accumulators.
 	 * @throws Exception Thrown, if job submission caused an exception.
 	 */
-	public abstract JobExecutionResult executePlan(
+	public abstract JobSubmissionResult executePlan(
 			Pipeline plan,
 			List<URL> jarFiles,
-			List<URL> globalClasspaths) throws Exception;
+			List<URL> globalClasspaths,
+			List<JobListener> jobListeners,
+			boolean detached) throws Exception;
+
+	public abstract void cancel(JobID jobID) throws Exception;
 
 	// ------------------------------------------------------------------------
 	//  Executor Factories

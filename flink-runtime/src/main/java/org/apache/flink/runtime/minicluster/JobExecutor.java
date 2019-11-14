@@ -19,8 +19,13 @@
 package org.apache.flink.runtime.minicluster;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.JobSubmissionResult;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+
+import java.util.List;
 
 /**
  * Interface for {@link JobGraph} executors.
@@ -35,4 +40,17 @@ public interface JobExecutor {
 	 * @throws JobExecutionException if the job failed to execute
 	 */
 	JobExecutionResult executeJobBlocking(final JobGraph jobGraph) throws JobExecutionException, InterruptedException;
+
+	/**
+	 *
+	 * @param jobGraph
+	 * @param jobListeners
+	 * @param detached
+	 * @return JobSubmissionResult
+	 * @throws JobExecutionException
+	 * @throws InterruptedException
+	 */
+	JobSubmissionResult execute(final JobGraph jobGraph, List<JobListener> jobListeners, boolean detached) throws JobExecutionException, InterruptedException;
+
+	void cancel(JobID jobID) throws JobExecutionException;
 }

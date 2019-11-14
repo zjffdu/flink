@@ -19,7 +19,9 @@
 package org.apache.flink.client;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
+import org.apache.flink.api.java.JobListener;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.ContextEnvironment;
 import org.apache.flink.client.program.ContextEnvironmentFactory;
@@ -101,16 +103,28 @@ public enum ClientUtils {
 	}
 
 	public static JobExecutionResult submitJob(
-			ClusterClient<?> client,
-			JobGraph jobGraph) throws ProgramInvocationException {
+		ClusterClient<?> client,
+		JobGraph jobGraph) throws ProgramInvocationException {
+		return 	submitJob(client, jobGraph, null);
+	}
+
+	public static JobExecutionResult submitJob(
+		ClusterClient<?> client,
+		JobGraph jobGraph, List<JobListener> jobListeners) throws ProgramInvocationException {
 		checkNotNull(client);
 		checkNotNull(jobGraph);
 		try {
-			return client
+			JobExecutionResult jobExecutionResult = client
 				.submitJob(jobGraph)
 				.thenApply(JobSubmissionResult::getJobID)
 				.thenApply(DetachedJobExecutionResult::new)
 				.get();
+			if (jobListeners != null) {
+				for (JobListener jobListener : jobListeners) {
+					jobListener.onJobSubmitted(jobExecutionResult.getJobID());
+				}
+			}
+			return jobExecutionResult;
 		} catch (InterruptedException | ExecutionException e) {
 			ExceptionUtils.checkInterrupted(e);
 			throw new ProgramInvocationException("Could not run job in detached mode.", jobGraph.getJobID(), e);
@@ -118,9 +132,16 @@ public enum ClientUtils {
 	}
 
 	public static JobExecutionResult submitJobAndWaitForResult(
-			ClusterClient<?> client,
-			JobGraph jobGraph,
-			ClassLoader classLoader) throws ProgramInvocationException {
+		ClusterClient<?> client,
+		JobGraph jobGraph,
+		ClassLoader classLoader) throws ProgramInvocationException {
+		return 	submitJobAndWaitForResult(client, jobGraph, classLoader, null);
+	}
+
+	public static JobExecutionResult submitJobAndWaitForResult(
+		ClusterClient<?> client,
+		JobGraph jobGraph,
+		ClassLoader classLoader, List<JobListener> jobListeners) throws ProgramInvocationException {
 		checkNotNull(client);
 		checkNotNull(jobGraph);
 		checkNotNull(classLoader);
@@ -128,11 +149,16 @@ public enum ClientUtils {
 		JobResult jobResult;
 
 		try {
-			jobResult = client
+			JobID jobId = client
 				.submitJob(jobGraph)
 				.thenApply(JobSubmissionResult::getJobID)
-				.thenCompose(client::requestJobResult)
 				.get();
+			if (jobListeners != null) {
+				for (JobListener jobListener : jobListeners) {
+					jobListener.onJobSubmitted(jobId);
+				}
+			}
+			jobResult = client.requestJobResult(jobId).get();
 		} catch (InterruptedException | ExecutionException e) {
 			ExceptionUtils.checkInterrupted(e);
 			throw new ProgramInvocationException("Could not run job", jobGraph.getJobID(), e);
